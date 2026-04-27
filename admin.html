@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1F3864">
+  <title>Admin – Emoji Passport 🛂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind = { config: { theme: { extend: {
+      colors: { navy:'#1F3864', teal:'#4472C4', amber:'#FFC000', epgreen:'#70AD47' },
+      fontFamily: { sans: ['Inter','sans-serif'] }
+    }}}}
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-8px); }
+      40%      { transform: translateX(8px); }
+      60%      { transform: translateX(-6px); }
+      80%      { transform: translateX(6px); }
+    }
+    .shake { animation: shake .4s ease; }
+
+    .pin-box {
+      width: 56px; height: 68px;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px;
+      font-size: 28px; font-weight: 800;
+      text-align: center; outline: none;
+      color: #1F3864;
+      transition: border-color .2s, box-shadow .2s;
+      caret-color: transparent;
+      user-select: none;
+    }
+    .pin-box:focus  { border-color: #4472C4; box-shadow: 0 0 0 3px rgba(68,114,196,.18); }
+    .pin-box.filled { border-color: #1F3864; background: #f0f4ff; }
+    .pin-box.error  { border-color: #ef4444; background: #fff0f0; }
+
+    .toggle-track {
+      width: 52px; height: 28px; border-radius: 999px;
+      transition: background .25s; cursor: pointer;
+      position: relative; flex-shrink: 0;
+    }
+    .toggle-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: white; transition: transform .25s;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    }
+    .toggle-track.on  { background: #70AD47; }
+    .toggle-track.off { background: #cbd5e1; }
+    .toggle-track.on .toggle-thumb { transform: translateX(24px); }
+
+    .view-btn {
+      padding: 10px 0; border-radius: 12px;
+      font-weight: 700; font-size: 13px;
+      border: 2px solid transparent;
+      transition: all .18s; cursor: pointer; text-align: center;
+    }
+    .view-btn.active   { background: #1F3864; color: white; border-color: #1F3864; }
+    .view-btn.inactive { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+    .view-btn.inactive:hover { background: #e2e8f0; color: #1F3864; }
+
+    .data-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    .data-table th {
+      background: #f8fafc; color: #64748b; font-weight: 700;
+      text-align: left; padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0; white-space: nowrap;
+    }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #f8fafc; }
+
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .slide-up { animation: slideUp .35s ease forwards; }
+
+    /* Modal backdrop */
+    #clearModal {
+      display: none;
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(0,0,0,.55);
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #clearModal.open { display: flex; }
+  </style>
+</head>
+<body class="bg-[#F5F7FA] min-h-screen">
+
+<!-- ══════════════════════════════════
+     PIN SCREEN
+══════════════════════════════════ -->
+<div id="pinScreen" class="min-h-screen flex items-center justify-center p-6">
+  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm text-center">
+    <div class="text-5xl mb-4">🔐</div>
+    <h1 class="text-xl font-extrabold text-[#1A1A2E] mb-1">Admin Panel</h1>
+    <p class="text-sm text-gray-400 mb-7">Enter your 4-digit PIN to continue</p>
+
+    <div id="pinBoxes" class="flex justify-center gap-3 mb-5">
+      <input class="pin-box" type="password" inputmode="numeric" maxlength="1" id="p0" autocomplete="off">
+      <input class="pin-box" type="password" inputmode="numeric" maxlength="1" id="p1" autocomplete="off">
+      <input class="pin-box" type="password" inputmode="numeric" maxlength="1" id="p2" autocomplete="off">
+      <input class="pin-box" type="password" inputmode="numeric" maxlength="1" id="p3" autocomplete="off">
+    </div>
+    <p id="pinError" class="text-sm text-red-500 font-semibold h-5"></p>
+    <p class="text-xs text-gray-300 mt-6">Emoji Passport · Admin</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     DASHBOARD
+══════════════════════════════════ -->
+<div id="dashboard" class="hidden slide-up">
+
+  <!-- Header -->
+  <div class="bg-[#1F3864] text-white px-6 py-4 flex items-center justify-between">
+    <div>
+      <div class="font-extrabold text-lg">🛂 Emoji Passport Admin</div>
+      <div class="text-blue-300 text-xs font-medium">xBU BB2 Talent Accelerator 2026</div>
+    </div>
+    <button onclick="logout()"
+      class="text-xs text-blue-300 font-semibold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all">
+      Lock 🔒
+    </button>
+  </div>
+
+  <div class="max-w-4xl mx-auto px-4 py-6 space-y-5">
+
+    <!-- ── Row 1: Stats + Live Wall ── -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+      <!-- Stats -->
+      <div class="bg-white rounded-2xl shadow-sm p-5">
+        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Live Stats</div>
+        <div class="grid grid-cols-3 gap-3 text-center mb-1">
+          <div>
+            <div id="statUsers" class="text-3xl font-extrabold text-[#1F3864]">—</div>
+            <div class="text-xs text-gray-400 font-medium mt-0.5">Passports</div>
+          </div>
+          <div>
+            <div id="statStamps" class="text-3xl font-extrabold text-[#4472C4]">—</div>
+            <div class="text-xs text-gray-400 font-medium mt-0.5">Stamps</div>
+          </div>
+          <div>
+            <!-- Editable target -->
+            <div class="flex items-center justify-center gap-1">
+              <input id="targetInput" type="number" min="1" max="999" value="40"
+                class="w-16 text-3xl font-extrabold text-[#70AD47] text-center bg-transparent border-b-2 border-transparent
+                       hover:border-gray-200 focus:border-[#70AD47] focus:outline-none transition-colors"
+                title="Click to edit session size">
+            </div>
+            <div class="text-xs text-gray-400 font-medium mt-0.5">Target</div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="flex justify-between text-xs text-gray-400 mb-1.5">
+            <span>Participation</span>
+            <span id="statPct">0%</span>
+          </div>
+          <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div id="statBar" class="h-full bg-[#4472C4] rounded-full transition-all duration-700" style="width:0%"></div>
+          </div>
+        </div>
+        <p class="text-[10px] text-gray-300 mt-2 text-center">Click the target number to change session size</p>
+      </div>
+
+      <!-- Live Wall toggle -->
+      <div class="bg-white rounded-2xl shadow-sm p-5">
+        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Live Wall</div>
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-bold text-[#1A1A2E]">Show on Projector</div>
+            <div id="wallStatusText" class="text-sm text-gray-400 mt-0.5">Currently off</div>
+          </div>
+          <div id="wallToggle" class="toggle-track off" onclick="toggleWall()">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+        <a href="live-wall.html" target="_blank"
+          class="mt-4 flex items-center justify-center gap-2 py-2.5 border-2 border-gray-200 rounded-xl
+                 text-sm font-semibold text-gray-600 hover:border-[#1F3864] hover:text-[#1F3864] transition-all">
+          Open Live Wall ↗
+        </a>
+      </div>
+    </div>
+
+    <!-- ── Word Cloud control ── -->
+    <div class="bg-white rounded-2xl shadow-sm p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Word Cloud View</div>
+        <a href="wordcloud.html" target="_blank"
+          class="text-xs font-semibold text-[#4472C4] hover:underline">Open Wordcloud ↗</a>
+      </div>
+      <div class="grid grid-cols-5 gap-2" id="viewBtns">
+        <button class="view-btn" data-v="0" onclick="setView(0)">⏸ Off</button>
+        <button class="view-btn" data-v="1" onclick="setView(1)">✨ All</button>
+        <button class="view-btn" data-v="2" onclick="setView(2)">🎸 Hobby</button>
+        <button class="view-btn" data-v="3" onclick="setView(3)">💪 Strength</button>
+        <button class="view-btn" data-v="4" onclick="setView(4)">🌱 Expect</button>
+      </div>
+      <div id="viewHint" class="text-xs text-gray-400 mt-3 text-center min-h-[18px]"></div>
+    </div>
+
+    <!-- ── Participant table ── -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Participants
+          <span id="tableCount" class="ml-2 text-[#1F3864] font-extrabold text-sm">—</span>
+        </div>
+        <button onclick="exportCSV()"
+          class="text-xs font-semibold text-[#4472C4] bg-blue-50 hover:bg-blue-100
+                 px-3 py-1.5 rounded-lg transition-all">
+          ⬇ Export CSV
+        </button>
+      </div>
+
+      <div id="tableLoading" class="py-12 text-center text-gray-400 text-sm">
+        <div class="animate-spin text-2xl mb-2 inline-block">🛂</div>
+        <div>Loading participants…</div>
+      </div>
+      <div id="tableEmpty" class="hidden py-12 text-center text-gray-400 text-sm">
+        <div class="text-4xl mb-3">👤</div>
+        <div>No participants yet</div>
+      </div>
+      <div id="tableWrap" class="hidden overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Alias</th>
+              <th>Hobby</th>
+              <th>Strength</th>
+              <th>Expectation</th>
+              <th>Stamps</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Danger Zone ── -->
+    <div class="bg-white rounded-2xl shadow-sm p-5 border-2 border-red-100">
+      <div class="text-xs font-bold text-red-400 uppercase tracking-wider mb-3">Danger Zone</div>
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <div class="font-bold text-[#1A1A2E]">Clear All Session Data</div>
+          <div class="text-sm text-gray-400 mt-0.5">Deletes all passports and stamps — use before a new session</div>
+        </div>
+        <button onclick="openClearModal()"
+          class="shrink-0 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm
+                 rounded-xl border-2 border-red-200 hover:border-red-400 transition-all whitespace-nowrap">
+          🗑 Clear All Data
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     CLEAR DATA MODAL
+══════════════════════════════════ -->
+<div id="clearModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 text-center">
+    <div class="text-5xl mb-3">⚠️</div>
+    <h2 class="text-xl font-extrabold text-[#1A1A2E] mb-2">Clear All Session Data?</h2>
+    <p class="text-sm text-gray-500 mb-5">
+      This permanently deletes <strong id="clearCount">all</strong> passports and every stamp collected.
+      This cannot be undone.
+    </p>
+
+    <p class="text-sm font-semibold text-gray-600 mb-2">Type <code class="bg-gray-100 px-1.5 py-0.5 rounded text-red-500">CLEAR</code> to confirm</p>
+    <input id="clearConfirmInput" type="text" placeholder="Type CLEAR here"
+      class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-center font-bold tracking-widest
+             focus:outline-none focus:border-red-400 transition-colors mb-4"
+      oninput="onClearInput()">
+
+    <div class="flex gap-3">
+      <button onclick="closeClearModal()"
+        class="flex-1 py-3 rounded-xl font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">
+        Cancel
+      </button>
+      <button id="clearConfirmBtn" onclick="executeClean()" disabled
+        class="flex-1 py-3 rounded-xl font-bold text-white transition-all
+               bg-gray-300 cursor-not-allowed"
+        data-ready-class="bg-red-500 hover:bg-red-600 cursor-pointer">
+        Delete Everything
+      </button>
+    </div>
+
+    <div id="clearProgress" class="hidden mt-4 text-sm text-gray-400">
+      <div class="animate-spin inline-block mr-2">⏳</div>
+      <span id="clearProgressText">Deleting…</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     SCRIPT
+═══════════════════════════════════════ -->
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, collection, onSnapshot, setDoc, getDoc, getDocs, deleteDoc, writeBatch }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const ADMIN_PIN  = '1234';
+const SESSION_KEY = 'emojiPassportAdminAuth';
+
+const app = getApps().length ? getApps()[0] : initializeApp({
+  apiKey:            "AIzaSyDKCD-Oy3q4_FUJqp4CKZowBx8pvrk-2Tg",
+  authDomain:        "emoji-passport.firebaseapp.com",
+  projectId:         "emoji-passport",
+  storageBucket:     "emoji-passport.firebasestorage.app",
+  messagingSenderId: "999626118578",
+  appId:             "1:999626118578:web:7f2eca1da183fff778c0ab",
+});
+const db = getFirestore(app);
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let wallActive  = false;
+let curView     = -1;
+let currentTarget = 40;
+let allUsers    = [];
+let stampTotals = {};
+
+// ── PIN ───────────────────────────────────────────────────────────────────────
+
+const pinInputs = [0,1,2,3].map(i => document.getElementById(`p${i}`));
+
+function initPin() {
+  pinInputs.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      const val = box.value.replace(/\D/g, '');
+      box.value = val.slice(-1);
+      if (val) {
+        box.classList.add('filled'); box.classList.remove('error');
+        if (i < 3) pinInputs[i + 1].focus(); else checkPin();
+      } else { box.classList.remove('filled'); }
+    });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !box.value && i > 0) {
+        pinInputs[i - 1].focus();
+        pinInputs[i - 1].value = '';
+        pinInputs[i - 1].classList.remove('filled');
+      }
+    });
+    box.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 4);
+      digits.split('').forEach((d, idx) => {
+        if (pinInputs[idx]) { pinInputs[idx].value = d; pinInputs[idx].classList.add('filled'); }
+      });
+      if (digits.length === 4) checkPin();
+      else if (pinInputs[digits.length]) pinInputs[digits.length].focus();
+    });
+  });
+  setTimeout(() => pinInputs[0].focus(), 100);
+}
+
+function checkPin() {
+  const entered = pinInputs.map(b => b.value).join('');
+  if (entered === ADMIN_PIN) {
+    sessionStorage.setItem(SESSION_KEY, '1');
+    showDashboard();
+  } else {
+    pinInputs.forEach(b => { b.classList.add('error'); b.classList.remove('filled'); });
+    document.getElementById('pinBoxes').classList.add('shake');
+    document.getElementById('pinError').textContent = 'Incorrect PIN — try again';
+    setTimeout(() => {
+      document.getElementById('pinBoxes').classList.remove('shake');
+      pinInputs.forEach(b => { b.value = ''; b.classList.remove('error'); });
+      document.getElementById('pinError').textContent = '';
+      pinInputs[0].focus();
+    }, 900);
+  }
+}
+
+window.logout = function() {
+  sessionStorage.removeItem(SESSION_KEY);
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('pinScreen').classList.remove('hidden');
+  pinInputs.forEach(b => { b.value = ''; b.classList.remove('filled','error'); });
+  document.getElementById('pinError').textContent = '';
+  pinInputs[0].focus();
+};
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+function showDashboard() {
+  document.getElementById('pinScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  startListeners();
+}
+
+let listenersStarted = false;
+function startListeners() {
+  if (listenersStarted) return;
+  listenersStarted = true;
+
+  onSnapshot(doc(db, 'admin', 'settings'), (snap) => {
+    const data = snap.exists() ? snap.data() : {};
+    wallActive    = data.livewall_active === true;
+    curView       = data.wordcloud_view  ?? 0;
+    currentTarget = data.target_count    ?? 40;
+    document.getElementById('targetInput').value = currentTarget;
+    updateWallUI();
+    updateViewUI();
+    updateStats();
+  }, () => { wallActive = false; curView = 0; updateWallUI(); updateViewUI(); });
+
+  onSnapshot(collection(db, 'users'), (snap) => {
+    allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTable();
+    updateStats();
+  });
+}
+
+// ── Target input (debounced save) ─────────────────────────────────────────────
+
+let targetSaveTimer = null;
+document.getElementById('targetInput').addEventListener('input', () => {
+  const val = parseInt(document.getElementById('targetInput').value) || 40;
+  currentTarget = Math.max(1, Math.min(999, val));
+  updateStats();
+  clearTimeout(targetSaveTimer);
+  targetSaveTimer = setTimeout(() => {
+    setDoc(doc(db, 'admin', 'settings'), { target_count: currentTarget }, { merge: true });
+  }, 800);
+});
+
+// ── Live Wall toggle ──────────────────────────────────────────────────────────
+
+window.toggleWall = async function() {
+  await setDoc(doc(db, 'admin', 'settings'), { livewall_active: !wallActive }, { merge: true });
+};
+
+function updateWallUI() {
+  const toggle = document.getElementById('wallToggle');
+  const text   = document.getElementById('wallStatusText');
+  if (wallActive) {
+    toggle.className = 'toggle-track on';
+    text.textContent = 'Currently ON — showing on projector';
+    text.className   = 'text-sm text-green-600 font-semibold mt-0.5';
+  } else {
+    toggle.className = 'toggle-track off';
+    text.textContent = 'Currently off';
+    text.className   = 'text-sm text-gray-400 mt-0.5';
+  }
+}
+
+// ── Word Cloud ────────────────────────────────────────────────────────────────
+
+const VIEW_LABELS = {
+  0: 'Standby — cloud hidden',
+  1: 'Showing all emojis combined',
+  2: 'Showing hobby emojis only',
+  3: 'Showing strength emojis only',
+  4: 'Showing expectation emojis only',
+};
+
+window.setView = async function(v) {
+  await setDoc(doc(db, 'admin', 'settings'), { wordcloud_view: v }, { merge: true });
+};
+
+function updateViewUI() {
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    const v = parseInt(btn.dataset.v);
+    btn.className = 'view-btn ' + (v === curView ? 'active' : 'inactive');
+  });
+  document.getElementById('viewHint').textContent = VIEW_LABELS[curView] ?? '';
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+function updateStats() {
+  const count  = allUsers.length;
+  const target = currentTarget;
+  const pct    = target > 0 ? Math.round((count / target) * 100) : 0;
+  document.getElementById('statUsers').textContent = count;
+  document.getElementById('tableCount').textContent = count;
+  document.getElementById('statPct').textContent   = pct + '%';
+  document.getElementById('statBar').style.width   = Math.min(pct, 100) + '%';
+  const total = Object.values(stampTotals).reduce((a, b) => a + b, 0);
+  document.getElementById('statStamps').textContent = total;
+}
+
+async function loadStampCount(userId) {
+  try {
+    const snap = await getDocs(collection(db, 'stamps', userId, 'collected'));
+    stampTotals[userId] = snap.size;
+  } catch { stampTotals[userId] = 0; }
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' })
+    + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+}
+function escHtml(str) {
+  return String(str || '').replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function renderTable() {
+  document.getElementById('tableLoading').classList.add('hidden');
+  if (allUsers.length === 0) {
+    document.getElementById('tableEmpty').classList.remove('hidden');
+    document.getElementById('tableWrap').classList.add('hidden');
+    return;
+  }
+  document.getElementById('tableEmpty').classList.add('hidden');
+  document.getElementById('tableWrap').classList.remove('hidden');
+
+  const missing = allUsers.filter(u => stampTotals[u.id] === undefined);
+  if (missing.length) {
+    await Promise.all(missing.map(u => loadStampCount(u.id)));
+    updateStats();
+  }
+
+  document.getElementById('tableBody').innerHTML = allUsers
+    .sort((a, b) => (a.created_at?.toMillis?.() ?? 0) - (b.created_at?.toMillis?.() ?? 0))
+    .map((u, i) => `
+      <tr>
+        <td class="text-gray-400 font-mono text-xs">${i + 1}</td>
+        <td class="font-semibold text-[#1A1A2E]">${escHtml(u.alias)}</td>
+        <td class="text-xl">${u.hobby_emoji || '—'}</td>
+        <td class="text-xl">${u.strength_emoji || '—'}
+          ${u.strength_label ? `<span class="text-xs text-gray-400 ml-1">${escHtml(u.strength_label)}</span>` : ''}
+        </td>
+        <td class="text-xl">${u.expect_emoji || '—'}
+          ${u.expect_label ? `<span class="text-xs text-gray-400 ml-1">${escHtml(u.expect_label)}</span>` : ''}
+        </td>
+        <td class="font-bold text-[#4472C4]">${stampTotals[u.id] ?? '…'}</td>
+        <td class="text-xs text-gray-400 whitespace-nowrap">${formatDate(u.created_at)}</td>
+      </tr>
+    `).join('');
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+
+window.exportCSV = function() {
+  const headers = ['#','Alias','Hobby Emoji','Strength Emoji','Strength Label','Expect Emoji','Expect Label','Stamps','Joined'];
+  const rows = allUsers
+    .sort((a, b) => (a.created_at?.toMillis?.() ?? 0) - (b.created_at?.toMillis?.() ?? 0))
+    .map((u, i) => [
+      i + 1,
+      `"${(u.alias || '').replace(/"/g,'""')}"`,
+      u.hobby_emoji || '',
+      u.strength_emoji || '',
+      `"${(u.strength_label || '').replace(/"/g,'""')}"`,
+      u.expect_emoji || '',
+      `"${(u.expect_label || '').replace(/"/g,'""')}"`,
+      stampTotals[u.id] ?? 0,
+      u.created_at?.toDate ? u.created_at.toDate().toISOString() : '',
+    ]);
+  const csv  = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), {
+    href: url,
+    download: `emoji-passport-${new Date().toISOString().slice(0,10)}.csv`,
+  }).click();
+  URL.revokeObjectURL(url);
+};
+
+// ── Clear Data Modal ──────────────────────────────────────────────────────────
+
+window.openClearModal = function() {
+  document.getElementById('clearCount').textContent =
+    allUsers.length > 0 ? `${allUsers.length}` : 'all';
+  document.getElementById('clearConfirmInput').value = '';
+  document.getElementById('clearProgress').classList.add('hidden');
+  setClearBtn(false);
+  document.getElementById('clearModal').classList.add('open');
+  setTimeout(() => document.getElementById('clearConfirmInput').focus(), 100);
+};
+
+window.closeClearModal = function() {
+  document.getElementById('clearModal').classList.remove('open');
+};
+
+window.onClearInput = function() {
+  const val = document.getElementById('clearConfirmInput').value.trim();
+  setClearBtn(val === 'CLEAR');
+};
+
+function setClearBtn(ready) {
+  const btn = document.getElementById('clearConfirmBtn');
+  if (ready) {
+    btn.disabled = false;
+    btn.className = btn.className.replace('bg-gray-300 cursor-not-allowed',
+      'bg-red-500 hover:bg-red-600 cursor-pointer');
+  } else {
+    btn.disabled = true;
+    btn.className = btn.className.replace('bg-red-500 hover:bg-red-600 cursor-pointer',
+      'bg-gray-300 cursor-not-allowed');
+  }
+}
+
+window.executeClean = async function() {
+  const btn      = document.getElementById('clearConfirmBtn');
+  const progress = document.getElementById('clearProgress');
+  const progText = document.getElementById('clearProgressText');
+
+  btn.disabled = true;
+  progress.classList.remove('hidden');
+
+  try {
+    // 1. Get all users
+    progText.textContent = 'Loading participants…';
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const userIds   = usersSnap.docs.map(d => d.id);
+
+    // 2. Delete all stamp subcollections, chunked into batches of 400
+    for (const userId of userIds) {
+      progText.textContent = `Clearing stamps for ${userIds.indexOf(userId) + 1} / ${userIds.length}…`;
+      const stampsSnap = await getDocs(collection(db, 'stamps', userId, 'collected'));
+      const stampDocs  = stampsSnap.docs;
+      for (let i = 0; i < stampDocs.length; i += 400) {
+        const batch = writeBatch(db);
+        stampDocs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+      // Delete the parent stamps/{userId} doc if it exists
+      await deleteDoc(doc(db, 'stamps', userId)).catch(() => {});
+    }
+
+    // 3. Delete all user docs in batches of 400
+    progText.textContent = 'Deleting passports…';
+    for (let i = 0; i < usersSnap.docs.length; i += 400) {
+      const batch = writeBatch(db);
+      usersSnap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+
+    // 4. Reset admin settings (keep target_count, reset wall + cloud)
+    progText.textContent = 'Resetting session…';
+    await setDoc(doc(db, 'admin', 'settings'), {
+      livewall_active: false,
+      wordcloud_view:  0,
+      target_count:    currentTarget,
+    });
+
+    progText.textContent = '✅ Done! All data cleared.';
+    stampTotals = {};
+
+    setTimeout(() => closeClearModal(), 1500);
+
+  } catch (err) {
+    progText.textContent = `❌ Error: ${err.message}`;
+    btn.disabled = false;
+    setClearBtn(true);
+  }
+};
+
+// Close modal on backdrop click
+document.getElementById('clearModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('clearModal')) closeClearModal();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+initPin();
+if (sessionStorage.getItem(SESSION_KEY) === '1') showDashboard();
+</script>
+</body>
+</html>

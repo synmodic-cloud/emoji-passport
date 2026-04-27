@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0D1B2A">
+  <title>Live Wall – Emoji Passport 🛂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0D1B2A;
+      --navy:    #1F3864;
+      --teal:    #4472C4;
+      --amber:   #FFC000;
+      --card-bg: rgba(255,255,255,0.07);
+      --card-border: rgba(255,255,255,0.12);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;         /* no scroll — fills the projector */
+    }
+
+    /* ── Layout ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* ── Title bar ── */
+    #titleBar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      background: rgba(31,56,100,0.6);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    #titleBar .left  { font-size: 20px; font-weight: 800; letter-spacing: -.3px; }
+    #titleBar .right { font-size: 15px; color: rgba(255,255,255,0.55); font-weight: 600; white-space: nowrap; }
+    #titleBar .count { color: var(--amber); font-weight: 800; }
+
+    /* ── Card grid ── */
+    #wallGrid {
+      flex: 1;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-auto-rows: min-content;
+      gap: 14px;
+      padding: 18px 20px;
+      align-content: start;
+    }
+
+    /* ── Mini passport card ── */
+    .mini-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      opacity: 0;             /* starts invisible, animation fills */
+    }
+    .mini-card .alias {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+    .mini-card .emojis {
+      font-size: 22px;
+      line-height: 1;
+      display: flex;
+      gap: 6px;
+    }
+    .mini-card .short-code {
+      font-size: 9px;
+      color: rgba(255,255,255,0.25);
+      font-family: monospace;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Card entrance ── */
+    @keyframes cardIn {
+      0%   { opacity:0; transform:scale(.82) translateY(12px); }
+      70%  { opacity:1; transform:scale(1.03) translateY(-2px); }
+      100% { opacity:1; transform:scale(1)    translateY(0); }
+    }
+    .card-enter {
+      animation: cardIn 0.55s cubic-bezier(.175,.885,.32,1.275) forwards;
+    }
+
+    /* ── Standby screen ── */
+    #standby {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      z-index: 20;
+      gap: 20px;
+    }
+    #standby .icon  { font-size: 72px; }
+    #standby h1     { font-size: 28px; font-weight: 800; color: rgba(255,255,255,.7); }
+    #standby p      { font-size: 15px; color: rgba(255,255,255,.35); }
+
+    /* Pulsing dots loader */
+    .dots { display: flex; gap: 8px; margin-top: 8px; }
+    .dots span {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--teal);
+      animation: dotPulse 1.4s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: .2s; }
+    .dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes dotPulse {
+      0%,80%,100% { transform:scale(.6); opacity:.3; }
+      40%          { transform:scale(1);  opacity:1;  }
+    }
+
+    /* ── Fade transition when wall activates ── */
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    #wallContent { animation: fadeIn .5s ease; }
+
+    /* ── Ticker: new user joined flash ── */
+    #ticker {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--amber);
+      color: #1A1A2E;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 10px 24px;
+      border-radius: 999px;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 30;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    #ticker.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Standby screen (shown when livewall_active = false) ── -->
+  <div id="standby">
+    <div class="icon">⏳</div>
+    <h1>Live Wall</h1>
+    <p>Waiting for facilitator to activate…</p>
+    <div class="dots">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <!-- ── Wall content (shown when livewall_active = true) ── -->
+  <div id="wallContent" style="display:none; flex-direction:column; height:100%;">
+
+    <!-- Title bar -->
+    <div id="titleBar">
+      <div class="left">xBU BB2 Talent Accelerator 2026 &nbsp;🛂&nbsp; Live Wall</div>
+      <div class="right">
+        <span id="countEl" class="count">0</span>
+        <span> / <span id="targetEl">40</span> passports created</span>
+      </div>
+    </div>
+
+    <!-- Card grid -->
+    <div id="wallGrid"></div>
+
+  </div>
+
+</div>
+
+<!-- New-user ticker toast -->
+<div id="ticker"></div>
+
+
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, onSnapshot }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const app = getApps().length ? getApps()[0] : initializeApp({
+  apiKey:            "AIzaSyDKCD-Oy3q4_FUJqp4CKZowBx8pvrk-2Tg",
+  authDomain:        "emoji-passport.firebaseapp.com",
+  projectId:         "emoji-passport",
+  storageBucket:     "emoji-passport.firebasestorage.app",
+  messagingSenderId: "999626118578",
+  appId:             "1:999626118578:web:7f2eca1da183fff778c0ab",
+});
+const db = getFirestore(app);
+
+// ── Elements ──────────────────────────────────────────────────────────────────
+
+const standby     = document.getElementById('standby');
+const wallContent = document.getElementById('wallContent');
+const wallGrid    = document.getElementById('wallGrid');
+const countEl     = document.getElementById('countEl');
+const ticker      = document.getElementById('ticker');
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+const renderedCards = new Map(); // userId → cardElement
+let   tickerTimer   = null;
+let   wallActive    = false;
+let   isFirstLoad   = true;     // suppress ticker toasts on initial data load
+
+// ── Make a mini-card element ──────────────────────────────────────────────────
+
+function makeCard(userId, data) {
+  const card = document.createElement('div');
+  card.className = 'mini-card';
+  card.dataset.userId = userId;
+  card.innerHTML = `
+    <div class="alias">${escHtml(data.alias || '?')}</div>
+    <div class="emojis">
+      <span>${data.hobby_emoji    || ''}</span>
+      <span>${data.strength_emoji || ''}</span>
+      <span>${data.expect_emoji   || ''}</span>
+    </div>
+    <div class="short-code">${userId.slice(0,4).toUpperCase()}</div>
+  `;
+  return card;
+}
+
+function escHtml(str) {
+  return String(str).replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── Ticker toast ──────────────────────────────────────────────────────────────
+
+function showTicker(alias, emojis) {
+  ticker.textContent = `✨ ${alias} just joined! ${emojis}`;
+  ticker.classList.add('show');
+  if (tickerTimer) clearTimeout(tickerTimer);
+  tickerTimer = setTimeout(() => ticker.classList.remove('show'), 3500);
+}
+
+// ── Admin settings listener ───────────────────────────────────────────────────
+
+onSnapshot(doc(db, 'admin', 'settings'), (snap) => {
+  const data = snap.exists() ? snap.data() : {};
+  wallActive = data.livewall_active === true;
+
+  // Update target count display
+  const target = data.target_count ?? 40;
+  document.getElementById('targetEl').textContent = target;
+
+  if (wallActive) {
+    standby.style.display           = 'none';
+    wallContent.style.display       = 'flex';
+  } else {
+    standby.style.display           = 'flex';
+    wallContent.style.display       = 'none';
+  }
+}, () => {
+  // If admin/settings doesn't exist, stay on standby
+});
+
+// ── Users collection listener (efficient: uses docChanges) ────────────────────
+
+onSnapshot(collection(db, 'users'), (snap) => {
+  snap.docChanges().forEach((change) => {
+    if (change.type === 'added') {
+      const { id }  = change.doc;
+      const data    = change.doc.data();
+
+      if (renderedCards.has(id)) return; // already rendered
+
+      const card = makeCard(id, data);
+      renderedCards.set(id, card);
+      wallGrid.appendChild(card);
+
+      // Trigger entrance animation (next frame so element is in DOM)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => card.classList.add('card-enter'));
+      });
+
+      // Show ticker toast only for live joins (not on initial page load)
+      if (!isFirstLoad && wallActive) {
+        showTicker(data.alias, `${data.hobby_emoji}${data.strength_emoji}${data.expect_emoji}`);
+      }
+    }
+    // 'modified' / 'removed' not expected (profiles are immutable after creation)
+  });
+
+  // After the first batch of snapshots, mark initial load done
+  if (isFirstLoad) {
+    isFirstLoad = false;
+  }
+
+  // Update count
+  countEl.textContent = renderedCards.size;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1F3864">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Scan – Emoji Passport 🛂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind = { config: { theme: { extend: {
+      colors: { navy:'#1F3864', teal:'#4472C4', epgreen:'#70AD47' },
+      fontFamily: { sans: ['Inter','sans-serif'] }
+    }}}}
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+
+    /* Make html5-qrcode viewfinder fill the container cleanly */
+    #reader { width: 100% !important; }
+    #reader video { width: 100% !important; height: 100% !important; object-fit: cover; border-radius: 16px; }
+    #reader img  { display: none; }        /* hide the QR border overlay image */
+    #reader > div:last-child { display: none !important; } /* hide built-in controls */
+
+    /* Scan-frame overlay (the aiming box) */
+    .scan-frame {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .scan-frame::before {
+      content: '';
+      width: min(240px, 70vw);
+      height: min(240px, 70vw);
+      border: 3px solid #FFC000;
+      border-radius: 16px;
+      box-shadow: 0 0 0 2000px rgba(0,0,0,0.45);
+    }
+
+    /* Emoji bounce animation for success overlay */
+    @keyframes emojiBounce {
+      0%   { transform: scale(0) rotate(-15deg); opacity:0; }
+      60%  { transform: scale(1.2) rotate(4deg);  opacity:1; }
+      80%  { transform: scale(0.9) rotate(-2deg); }
+      100% { transform: scale(1)   rotate(0deg);  opacity:1; }
+    }
+    .emoji-bounce { display: inline-block; animation: emojiBounce 0.6s cubic-bezier(.175,.885,.32,1.275) forwards; opacity:0; }
+
+    @keyframes fadeSlideUp {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .fade-slide { animation: fadeSlideUp 0.4s ease forwards; }
+
+    /* Countdown ring */
+    @keyframes shrink { from { width:100%; } to { width:0%; } }
+    .countdown-bar { animation: shrink 4s linear forwards; }
+  </style>
+</head>
+<body class="bg-[#F5F7FA] min-h-screen">
+
+<!-- ── Header ── -->
+<div class="sticky top-0 z-10 bg-[#1F3864] text-white px-4 py-4">
+  <div class="flex items-center justify-between max-w-md mx-auto">
+    <a href="passport.html" class="text-blue-200 text-sm font-medium">← Back</a>
+    <div class="font-bold">📷 Scan QR Code</div>
+    <div class="w-12"></div>
+  </div>
+</div>
+
+<div class="max-w-md mx-auto px-4 pt-4 pb-28">
+
+  <!-- ── State: Enable Camera (shown first — iOS requires user gesture) ── -->
+  <div id="stateEnable">
+    <p class="text-center text-gray-500 text-sm mb-5">
+      Point your camera at someone's Passport QR code to collect their stamp.
+    </p>
+    <button onclick="startCamera()"
+      class="w-full flex flex-col items-center justify-center gap-3
+             bg-[#1F3864] text-white rounded-2xl py-10
+             hover:opacity-90 active:scale-95 transition-all">
+      <span class="text-6xl">📷</span>
+      <span class="text-xl font-bold">Tap to Enable Camera</span>
+      <span class="text-blue-200 text-sm">Allow camera access when prompted</span>
+    </button>
+  </div>
+
+  <!-- ── State: Camera Active ── -->
+  <div id="stateCamera" class="hidden">
+    <p class="text-center text-gray-500 text-sm mb-3">
+      Point at someone's Passport QR code
+    </p>
+    <!-- Viewfinder -->
+    <div class="relative rounded-2xl overflow-hidden bg-black" style="aspect-ratio:1">
+      <div id="reader" class="w-full h-full"></div>
+      <div class="scan-frame"></div>
+    </div>
+    <p class="text-center text-xs text-gray-400 mt-2">Hold steady — scanning automatically</p>
+  </div>
+
+  <!-- ── State: Permission Denied ── -->
+  <div id="statePermDenied" class="hidden">
+    <div class="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+      <div class="text-4xl mb-3">🚫</div>
+      <h3 class="font-bold text-red-700 mb-1">Camera access denied</h3>
+      <p class="text-red-600 text-sm mb-4">
+        Go to your browser settings → allow camera for this site, then reload.
+      </p>
+      <button onclick="window.location.reload()"
+        class="text-sm bg-red-600 text-white px-4 py-2 rounded-xl">
+        Reload Page
+      </button>
+    </div>
+  </div>
+
+  <!-- ── State: Camera Error ── -->
+  <div id="stateCamError" class="hidden">
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center mb-4">
+      <div class="text-3xl mb-2">⚠️</div>
+      <p id="camErrorMsg" class="text-amber-700 text-sm"></p>
+      <button onclick="startCamera()" class="mt-3 text-sm bg-amber-600 text-white px-4 py-2 rounded-xl">
+        Try Again
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Manual Code Entry (always shown) ── -->
+  <div class="mt-6 bg-white rounded-2xl shadow-sm p-5">
+    <p class="text-sm font-semibold text-gray-600 mb-1">Can't scan?</p>
+    <p class="text-xs text-gray-400 mb-3">Enter their 4-character passport code:</p>
+    <div class="flex gap-2">
+      <input
+        id="codeInput"
+        type="text"
+        maxlength="4"
+        placeholder="e.g. 9JN1"
+        autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+        class="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3
+               text-lg font-mono font-bold text-center tracking-widest uppercase
+               focus:outline-none focus:border-[#1F3864] transition-colors"
+      />
+      <button onclick="findByCode()"
+        class="bg-[#1F3864] text-white px-5 rounded-xl font-semibold
+               hover:opacity-90 active:scale-95 transition-all">
+        Find →
+      </button>
+    </div>
+    <p id="codeErr" class="text-red-500 text-xs mt-2 hidden"></p>
+  </div>
+
+</div><!-- /content -->
+
+<!-- ── Bottom Nav ── -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+  <div class="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+    <a href="passport.html" class="flex flex-col items-center flex-1 h-full justify-center gap-0.5 text-gray-400">
+      <span class="text-2xl">🛂</span><span class="text-[10px] font-medium">Passport</span>
+    </a>
+    <a href="scan.html" class="flex flex-col items-center flex-1 h-full justify-center gap-0.5 text-[#1F3864]">
+      <span class="text-2xl">📷</span><span class="text-[10px] font-semibold">Scan</span>
+    </a>
+    <a href="met.html" class="flex flex-col items-center flex-1 h-full justify-center gap-0.5 text-gray-400">
+      <span class="text-2xl">👥</span><span class="text-[10px] font-medium">Met</span>
+    </a>
+  </div>
+</nav>
+
+
+<!-- ════════════════════════════
+     PROCESSING OVERLAY
+════════════════════════════ -->
+<div id="processingOverlay" class="hidden fixed inset-0 bg-[#1F3864]/85 z-40 flex items-center justify-center">
+  <div class="text-center text-white">
+    <div class="text-5xl mb-3 animate-spin">🛂</div>
+    <p class="font-semibold">Collecting stamp…</p>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════
+     SUCCESS OVERLAY
+════════════════════════════ -->
+<div id="successOverlay"
+  class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+  style="background: linear-gradient(135deg, #70AD47 0%, #4a8a2e 100%)">
+
+  <!-- Countdown bar (top) -->
+  <div class="absolute top-0 left-0 right-0 h-1 bg-white/20">
+    <div id="countdownBar" class="h-full bg-white/60 countdown-bar"></div>
+  </div>
+
+  <div class="text-center fade-slide max-w-xs w-full">
+    <!-- Bouncing emojis -->
+    <div id="successEmojis" class="flex justify-center gap-4 mb-6 text-6xl"></div>
+
+    <!-- Stamp icon -->
+    <div class="text-5xl mb-2">✅</div>
+    <h2 class="text-3xl font-extrabold text-white mb-1">Stamped!</h2>
+    <p id="successAlias" class="text-white/90 text-lg font-medium mb-1"></p>
+    <p class="text-white/70 text-sm mb-4">has been added to your Met List</p>
+
+    <!-- Stamp count badge -->
+    <div id="successCount"
+      class="inline-block bg-white/20 text-white font-bold text-xl px-6 py-2 rounded-full mb-8">
+    </div>
+
+    <!-- Buttons -->
+    <div class="space-y-3 w-full">
+      <button onclick="scanAnother()"
+        class="w-full bg-white text-[#4a8a2e] font-bold py-4 rounded-2xl text-lg
+               hover:bg-white/90 active:scale-95 transition-all">
+        📷 Scan Another
+      </button>
+      <a href="met.html"
+        class="block w-full bg-white/20 border-2 border-white/40 text-white font-semibold
+               py-3.5 rounded-2xl text-center hover:bg-white/30 active:scale-95 transition-all">
+        👥 View My Met List
+      </a>
+    </div>
+
+    <p class="text-white/50 text-xs mt-5">Auto-closing in <span id="countdownNum">4</span>s</p>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════
+     ALREADY MET OVERLAY
+════════════════════════════ -->
+<div id="alreadyMetOverlay"
+  class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+  style="background: linear-gradient(135deg, #4472C4 0%, #2a508a 100%)">
+
+  <div class="text-center fade-slide max-w-xs w-full">
+    <div id="alreadyEmojis" class="flex justify-center gap-4 mb-6 text-6xl"></div>
+    <div class="text-5xl mb-2">👋</div>
+    <h2 class="text-2xl font-extrabold text-white mb-1">Already Met!</h2>
+    <p id="alreadyAlias" class="text-white/90 text-lg font-medium mb-6"></p>
+
+    <div class="space-y-3 w-full">
+      <button onclick="closeAlreadyMet()"
+        class="w-full bg-white text-[#2a508a] font-bold py-4 rounded-2xl text-lg
+               hover:bg-white/90 active:scale-95 transition-all">
+        📷 Scan Another
+      </button>
+      <a href="met.html"
+        class="block w-full bg-white/20 border-2 border-white/40 text-white font-semibold
+               py-3.5 rounded-2xl text-center hover:bg-white/30 transition-all">
+        👥 View My Met List
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════
+     SCRIPT
+════════════════════════════ -->
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, getDocs, collection, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDKCD-Oy3q4_FUJqp4CKZowBx8pvrk-2Tg",
+  authDomain:        "emoji-passport.firebaseapp.com",
+  projectId:         "emoji-passport",
+  storageBucket:     "emoji-passport.firebasestorage.app",
+  messagingSenderId: "999626118578",
+  appId:             "1:999626118578:web:7f2eca1da183fff778c0ab",
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+const app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+const db  = getFirestore(app);
+
+const myUserId = localStorage.getItem('emojiPassportUserId');
+if (!myUserId) window.location.replace('setup.html');
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let html5QrCode    = null;
+let isScanning     = false;
+let isProcessing   = false;
+let countdownTimer = null;
+
+// ── Show/hide helpers ─────────────────────────────────────────────────────────
+
+function show(id)   { document.getElementById(id).classList.remove('hidden'); }
+function hide(id)   { document.getElementById(id).classList.add('hidden'); }
+function hideAll(...ids) { ids.forEach(hide); }
+
+// ── If URL has ?from=xxx (opened via native camera scan) ───────────────────────
+
+(async () => {
+  const fromParam = new URLSearchParams(window.location.search).get('from');
+  if (fromParam) {
+    history.replaceState({}, '', window.location.pathname);
+    await processStampById(fromParam);
+  }
+})();
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+
+window.startCamera = async function() {
+  hideAll('stateEnable', 'statePermDenied', 'stateCamError');
+  show('stateCamera');
+
+  try {
+    html5QrCode = new Html5Qrcode('reader');
+    const qrboxSize = Math.min(240, window.innerWidth - 80);
+
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: qrboxSize, height: qrboxSize } },
+      onScanSuccess,
+      () => {} // ignore per-frame decode failures (normal)
+    );
+    isScanning = true;
+  } catch (err) {
+    hide('stateCamera');
+    if (err.name === 'NotAllowedError' || (err.message && err.message.toLowerCase().includes('permission'))) {
+      show('statePermDenied');
+    } else {
+      document.getElementById('camErrorMsg').textContent =
+        `Camera failed to start: ${err.message || err}. Use the code entry below.`;
+      show('stateCamError');
+      show('stateEnable');
+    }
+  }
+};
+
+function onScanSuccess(decodedText) {
+  if (isProcessing) return;
+
+  // Stop scanner before processing
+  if (html5QrCode && isScanning) {
+    isScanning = false;
+    html5QrCode.stop().catch(() => {});
+  }
+
+  const targetId = extractUserId(decodedText);
+  if (!targetId) {
+    isProcessing = false;
+    // Not a valid passport QR — restart scanning
+    startCamera();
+    return;
+  }
+  processStampById(targetId);
+}
+
+async function stopCamera() {
+  if (html5QrCode && isScanning) {
+    isScanning = false;
+    await html5QrCode.stop().catch(() => {});
+    html5QrCode = null;
+  }
+}
+
+// ── QR URL parsing ────────────────────────────────────────────────────────────
+
+function extractUserId(text) {
+  try {
+    const url = new URL(text);
+    return url.searchParams.get('from') || null;
+  } catch {
+    // Not a URL — accept raw userId (length guard)
+    return text.length >= 10 ? text.trim() : null;
+  }
+}
+
+// ── Core: process a stamp ─────────────────────────────────────────────────────
+
+async function processStampById(targetId) {
+  isProcessing = true;
+
+  // Self-scan guard
+  if (targetId === myUserId) {
+    isProcessing = false;
+    startCamera();
+    return;
+  }
+
+  show('processingOverlay');
+
+  try {
+    // 1. Load target user
+    const targetSnap = await getDoc(doc(db, 'users', targetId));
+    if (!targetSnap.exists()) {
+      hide('processingOverlay');
+      showCodeError('Passport not found — double-check the code.');
+      isProcessing = false;
+      startCamera();
+      return;
+    }
+    const targetUser = targetSnap.data();
+
+    // 2. Check if already stamped
+    const stampRef  = doc(db, 'stamps', myUserId, 'collected', targetId);
+    const existing  = await getDoc(stampRef);
+
+    if (existing.exists()) {
+      // Already met — show "already met" overlay
+      hide('processingOverlay');
+      showAlreadyMet(targetUser);
+      isProcessing = false;
+      return;
+    }
+
+    // 3. Write stamp
+    await setDoc(stampRef, {
+      alias:          targetUser.alias,
+      hobby_emoji:    targetUser.hobby_emoji,
+      strength_emoji: targetUser.strength_emoji,
+      expect_emoji:   targetUser.expect_emoji,
+      stamped_at:     serverTimestamp(),
+    });
+
+    // 4. Count all my stamps
+    const allStamps = await getDocs(collection(db, 'stamps', myUserId, 'collected'));
+    const stampTotal = allStamps.size;
+
+    hide('processingOverlay');
+    showSuccess(targetUser, stampTotal);
+
+  } catch (err) {
+    hide('processingOverlay');
+    console.error('Stamp error:', err);
+    showCodeError(`Error: ${err.message || 'Please try again.'}`);
+    isProcessing = false;
+    startCamera();
+  }
+}
+
+// ── Success overlay ───────────────────────────────────────────────────────────
+
+function showSuccess(user, count) {
+  // Emojis with staggered bounce
+  const emojis = [user.hobby_emoji, user.strength_emoji, user.expect_emoji];
+  document.getElementById('successEmojis').innerHTML = emojis.map((e, i) =>
+    `<span class="emoji-bounce" style="animation-delay:${i * 0.12}s">${e}</span>`
+  ).join('');
+
+  document.getElementById('successAlias').textContent  = user.alias;
+  document.getElementById('successCount').textContent  = `Stamp #${count}`;
+
+  // Reset & restart countdown bar
+  const bar = document.getElementById('countdownBar');
+  bar.style.animation = 'none';
+  bar.offsetHeight;   // force reflow
+  bar.style.animation = '';
+
+  show('successOverlay');
+
+  // Countdown number
+  let secs = 4;
+  document.getElementById('countdownNum').textContent = secs;
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    secs--;
+    document.getElementById('countdownNum').textContent = secs;
+    if (secs <= 0) {
+      clearInterval(countdownTimer);
+      hide('successOverlay');
+      isProcessing = false;
+      startCamera();
+    }
+  }, 1000);
+}
+
+window.scanAnother = function() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  hide('successOverlay');
+  isProcessing = false;
+  startCamera();
+};
+
+// ── Already met overlay ───────────────────────────────────────────────────────
+
+function showAlreadyMet(user) {
+  const emojis = [user.hobby_emoji, user.strength_emoji, user.expect_emoji];
+  document.getElementById('alreadyEmojis').innerHTML = emojis.map((e, i) =>
+    `<span class="emoji-bounce" style="animation-delay:${i * 0.12}s">${e}</span>`
+  ).join('');
+  document.getElementById('alreadyAlias').textContent = user.alias;
+  show('alreadyMetOverlay');
+}
+
+window.closeAlreadyMet = function() {
+  hide('alreadyMetOverlay');
+  startCamera();
+};
+
+// ── Manual code entry ─────────────────────────────────────────────────────────
+
+window.findByCode = async function() {
+  const raw  = document.getElementById('codeInput').value.trim().toUpperCase();
+  const err  = document.getElementById('codeErr');
+
+  if (raw.length !== 4) {
+    err.textContent = 'Please enter exactly 4 characters.';
+    err.classList.remove('hidden');
+    return;
+  }
+  err.classList.add('hidden');
+  show('processingOverlay');
+
+  try {
+    const allSnap = await getDocs(collection(db, 'users'));
+    const match   = allSnap.docs.find(d => d.id.toUpperCase().startsWith(raw));
+
+    if (!match) {
+      hide('processingOverlay');
+      err.textContent = 'No passport found with that code. Check and try again.';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('codeInput').value = '';
+    await processStampById(match.id);
+
+  } catch (e) {
+    hide('processingOverlay');
+    err.textContent = `Error: ${e.message}`;
+    err.classList.remove('hidden');
+  }
+};
+
+// Allow Enter key on code input
+document.getElementById('codeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.findByCode();
+});
+
+// ── Code entry error helper ───────────────────────────────────────────────────
+
+function showCodeError(msg) {
+  const err = document.getElementById('codeErr');
+  err.textContent = msg;
+  err.classList.remove('hidden');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Anyone can create a user profile (participants, no auth)
+    match /users/{userId} {
+      allow read: true;
+      allow create: true;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Anyone can write stamps (event context, low risk)
+    match /stamps/{userId}/collected/{targetId} {
+      allow read: true;
+      allow write: true;
+    }
+
+    // Admin settings: read by all (wordcloud/livewall need it)
+    // Write PIN check is handled app-side
+    match /admin/settings {
+      allow read: true;
+      allow write: true;
+    }
+  }
+}

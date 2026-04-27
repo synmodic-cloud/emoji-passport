@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0D1B2A">
+  <title>Word Cloud – Emoji Passport 🛂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #0D1B2A;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Full-screen layout ── */
+    #app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* ── State wrapper — fades in/out on view change ── */
+    #stateWrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 60px 32px;
+      transition: opacity 0.5s ease;
+    }
+
+    /* ── Standby (view 0) ── */
+    #standby {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    #standby .icon  { font-size: 80px; }
+    #standby h1     { font-size: 32px; font-weight: 800; color: rgba(255,255,255,.6); }
+    #standby p      { font-size: 16px; color: rgba(255,255,255,.3); }
+    .dots { display: flex; gap: 10px; margin-top: 4px; }
+    .dots span {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #4472C4;
+      animation: dotPulse 1.4s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: .2s; }
+    .dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes dotPulse {
+      0%,80%,100% { transform:scale(.5); opacity:.3; }
+      40%         { transform:scale(1);  opacity:1; }
+    }
+
+    /* ── Title ── */
+    #cloudTitle {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 28px;
+      letter-spacing: -.4px;
+      line-height: 1.2;
+    }
+
+    /* ── Emoji cloud ── */
+    #cloudArea {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 12px 16px;
+      overflow: hidden;
+    }
+
+    .emoji-chip {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      transition: transform .3s ease;
+      cursor: default;
+    }
+    .emoji-chip:hover { transform: scale(1.08); }
+    .emoji-chip .e    { line-height: 1; }
+    .emoji-chip .n    { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.4); }
+
+    /* ── Subtitle ── */
+    #cloudSubtitle {
+      margin-top: 24px;
+      font-size: 16px;
+      color: rgba(255,255,255,.45);
+      text-align: center;
+      font-weight: 600;
+      min-height: 24px;
+    }
+
+    /* ── Empty state (no data yet) ── */
+    #emptyCloud {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: rgba(255,255,255,.25);
+    }
+    #emptyCloud .e { font-size: 56px; }
+    #emptyCloud p  { font-size: 15px; }
+
+    /* Colour themes per state */
+    body[data-view="1"] { --accent: #4472C4; }
+    body[data-view="2"] { --accent: #FFC000; }
+    body[data-view="3"] { --accent: #4472C4; }
+    body[data-view="4"] { --accent: #70AD47; }
+  </style>
+</head>
+<body data-view="0">
+
+<div id="app">
+  <div id="stateWrapper">
+
+    <!-- Standby -->
+    <div id="standby">
+      <div class="icon">☁️</div>
+      <h1>Word Cloud</h1>
+      <p>Waiting for facilitator…</p>
+      <div class="dots"><span></span><span></span><span></span></div>
+    </div>
+
+    <!-- Cloud display (hidden until view > 0) -->
+    <div id="cloudDisplay" style="display:none; flex-direction:column; align-items:center; width:100%; height:100%;">
+      <div id="cloudTitle"></div>
+      <div id="cloudArea"></div>
+      <div id="cloudSubtitle"></div>
+    </div>
+
+  </div>
+</div>
+
+
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, onSnapshot }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const app = getApps().length ? getApps()[0] : initializeApp({
+  apiKey:            "AIzaSyDKCD-Oy3q4_FUJqp4CKZowBx8pvrk-2Tg",
+  authDomain:        "emoji-passport.firebaseapp.com",
+  projectId:         "emoji-passport",
+  storageBucket:     "emoji-passport.firebasestorage.app",
+  messagingSenderId: "999626118578",
+  appId:             "1:999626118578:web:7f2eca1da183fff778c0ab",
+});
+const db = getFirestore(app);
+
+// ── Elements ──────────────────────────────────────────────────────────────────
+
+const wrapper      = document.getElementById('stateWrapper');
+const standby      = document.getElementById('standby');
+const cloudDisplay = document.getElementById('cloudDisplay');
+const cloudTitle   = document.getElementById('cloudTitle');
+const cloudArea    = document.getElementById('cloudArea');
+const cloudSub     = document.getElementById('cloudSubtitle');
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let allUsers  = [];   // array of user data objects
+let curView   = -1;   // current wordcloud_view value
+
+// ── View config ───────────────────────────────────────────────────────────────
+
+const VIEW_CONFIG = {
+  1: {
+    title:    'Our Cohort in Emojis ✨',
+    getItems: (users) => {
+      const items = [];
+      users.forEach(u => {
+        if (u.hobby_emoji)    items.push({ emoji: u.hobby_emoji,    label: null });
+        if (u.strength_emoji) items.push({ emoji: u.strength_emoji, label: u.strength_label });
+        if (u.expect_emoji)   items.push({ emoji: u.expect_emoji,   label: u.expect_label });
+      });
+      return items;
+    },
+    subtitle: (top) => `Most popular: ${top.emoji} — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
+  },
+  2: {
+    title:    '🎸 What We Love Outside Work',
+    getItems: (users) => users
+      .filter(u => u.hobby_emoji)
+      .map(u => ({ emoji: u.hobby_emoji, label: null })),
+    subtitle: (top) => `Top hobby: ${top.emoji} — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
+  },
+  3: {
+    title:    '💪 Our Collective Superpowers',
+    getItems: (users) => users
+      .filter(u => u.strength_emoji)
+      .map(u => ({ emoji: u.strength_emoji, label: u.strength_label })),
+    subtitle: (top) => `Most common: ${top.emoji}  ${top.label || ''}  — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
+  },
+  4: {
+    title:    '🌱 What You Expect Most from the Programme',
+    getItems: (users) => users
+      .filter(u => u.expect_emoji)
+      .map(u => ({ emoji: u.expect_emoji, label: u.expect_label })),
+    subtitle: (top) => `Most expected: ${top.emoji}  ${top.label || ''}  — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
+  },
+};
+
+// ── Frequency counter ─────────────────────────────────────────────────────────
+
+function countFrequencies(items) {
+  // Group by emoji, track most common label per emoji
+  const freq = new Map(); // emoji → { count, label }
+  items.forEach(({ emoji, label }) => {
+    if (!emoji) return;
+    if (!freq.has(emoji)) {
+      freq.set(emoji, { count: 0, label: label || '' });
+    }
+    const entry = freq.get(emoji);
+    entry.count++;
+    // Keep the label from whichever is most frequent (first seen is fine)
+    if (!entry.label && label) entry.label = label;
+  });
+  return freq;
+}
+
+// ── Render cloud ──────────────────────────────────────────────────────────────
+
+function renderCloud(view) {
+  const config = VIEW_CONFIG[view];
+  if (!config) return;
+
+  cloudTitle.textContent = config.title;
+
+  const items = config.getItems(allUsers);
+  const freq  = countFrequencies(items);
+
+  if (freq.size === 0) {
+    cloudArea.innerHTML = `
+      <div id="emptyCloud">
+        <div class="e">☁️</div>
+        <p>No data yet — waiting for participants to join…</p>
+      </div>`;
+    cloudSub.textContent = '';
+    return;
+  }
+
+  // Sort by frequency descending
+  const sorted  = [...freq.entries()].sort((a, b) => b[1].count - a[1].count);
+  const maxCount = sorted[0][1].count;
+
+  // Font size: proportional to frequency (40px – 120px)
+  const MIN_SIZE = 40, MAX_SIZE = 120;
+
+  // Shuffle for a cloud-like layout (Fisher-Yates) — keeps visual variety
+  const shuffled = [...sorted];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  cloudArea.innerHTML = shuffled.map(([emoji, { count }]) => {
+    const size = Math.round(MIN_SIZE + ((count / maxCount) * (MAX_SIZE - MIN_SIZE)));
+    return `
+      <div class="emoji-chip">
+        <span class="e" style="font-size:${size}px">${emoji}</span>
+        <span class="n">${count}</span>
+      </div>`;
+  }).join('');
+
+  // Subtitle (uses the most-frequent item, not shuffled order)
+  const [topEmoji, topData] = sorted[0];
+  cloudSub.textContent = config.subtitle({ emoji: topEmoji, count: topData.count, label: topData.label });
+}
+
+// ── Switch view (with fade) ───────────────────────────────────────────────────
+
+function switchView(newView) {
+  if (newView === curView) {
+    // Same view but data may have changed — re-render without fade
+    if (newView > 0) renderCloud(newView);
+    return;
+  }
+
+  curView = newView;
+  document.body.dataset.view = newView;
+
+  // Fade out
+  wrapper.style.opacity = '0';
+
+  setTimeout(() => {
+    if (newView === 0) {
+      standby.style.display      = 'flex';
+      cloudDisplay.style.display = 'none';
+    } else {
+      standby.style.display      = 'none';
+      cloudDisplay.style.display = 'flex';
+      renderCloud(newView);
+    }
+    // Fade in
+    wrapper.style.opacity = '1';
+  }, 250);
+}
+
+// ── Listeners ─────────────────────────────────────────────────────────────────
+
+// Admin settings → wordcloud_view
+onSnapshot(doc(db, 'admin', 'settings'), (snap) => {
+  const view = snap.exists() ? (snap.data().wordcloud_view ?? 0) : 0;
+  switchView(view);
+}, () => {
+  switchView(0); // settings doc missing → standby
+});
+
+// Users collection → live data
+onSnapshot(collection(db, 'users'), (snap) => {
+  allUsers = snap.docs.map(d => d.data());
+  // Re-render if a live view is active
+  if (curView > 0) renderCloud(curView);
+});
+</script>
+</body>
+</html>

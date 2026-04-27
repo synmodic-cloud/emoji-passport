@@ -1,0 +1,14 @@
+[build]
+  publish = "."
+
+# Serve .html files for clean URLs (/setup → setup.html, etc.)
+[[redirects]]
+  from = "/*"
+  to = "/:splat.html"
+  status = 200
+  conditions = {Language = ["*"]}
+
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200

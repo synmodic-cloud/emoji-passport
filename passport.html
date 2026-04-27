@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1F3864">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>My Passport – Emoji Passport 🛂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind = {
+      config: {
+        theme: {
+          extend: {
+            colors: { navy:'#1F3864', teal:'#4472C4', epgreen:'#70AD47' },
+            fontFamily: { sans: ['Inter','sans-serif'] }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- QR code generator — qrcode-generator is synchronous and CDN-reliable -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+
+  <!-- html2canvas for Save as Image -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+
+    /* Passport card — optimised for html2canvas capture */
+    #passportCard {
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(31,56,100,.18);
+      overflow: hidden;
+      width: 100%;
+      max-width: 340px;
+    }
+    .card-header {
+      background: linear-gradient(135deg, #1F3864 0%, #2d4e8a 100%);
+      padding: 20px 16px 16px;
+      text-align: center;
+      color: white;
+    }
+    .card-footer {
+      background: linear-gradient(135deg, #1F3864 0%, #2d4e8a 100%);
+      padding: 12px 16px;
+      text-align: center;
+      color: white;
+    }
+    .emoji-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .emoji-row:last-child { border-bottom: none; }
+
+    /* QR wrapper — white bg ensures html2canvas picks it up */
+    #qrContainer {
+      width: 200px; height: 200px;
+      display: flex; align-items: center; justify-content: center;
+      background: white;
+    }
+    #qrContainer img, #qrContainer canvas {
+      width: 200px !important; height: 200px !important;
+    }
+
+    @keyframes pulse-ring {
+      0%   { transform: scale(.95); box-shadow: 0 0 0 0 rgba(31,56,100,.4); }
+      70%  { transform: scale(1);   box-shadow: 0 0 0 10px rgba(31,56,100,0); }
+      100% { transform: scale(.95); box-shadow: 0 0 0 0 rgba(31,56,100,0); }
+    }
+    .pulse-ring { animation: pulse-ring 2s ease infinite; }
+
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .slide-up { animation: slideUp .4s ease forwards; }
+  </style>
+</head>
+<body class="bg-[#F5F7FA] min-h-screen">
+
+<!-- ── Loading state ── -->
+<div id="loadState" class="min-h-screen flex items-center justify-center">
+  <div class="text-center text-gray-400">
+    <div class="text-5xl mb-4 animate-spin">🛂</div>
+    <p id="loadMsg" class="text-sm">Loading your passport…</p>
+  </div>
+</div>
+
+<!-- ── Error state ── -->
+<div id="errState" class="hidden min-h-screen flex items-center justify-center p-8">
+  <div class="text-center max-w-xs">
+    <div class="text-5xl mb-4" id="errIcon">😕</div>
+    <h2 class="text-xl font-bold text-gray-700 mb-2" id="errTitle">Something went wrong</h2>
+    <p class="text-gray-500 text-sm mb-6" id="errMsg">Unable to load your passport.</p>
+    <a href="setup.html"
+       class="inline-block bg-[#1F3864] text-white px-6 py-3 rounded-xl font-semibold mb-3 block">
+      Create My Passport →
+    </a>
+    <button onclick="window.location.reload()"
+      class="text-sm text-gray-400 underline">Try reloading</button>
+  </div>
+</div>
+
+<!-- ── Main content (hidden until loaded) ── -->
+<div id="mainContent" class="hidden slide-up pb-24 pt-6 flex flex-col items-center px-4">
+
+  <!-- ════════ PASSPORT CARD ════════ -->
+  <div id="passportCard">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="text-xs font-bold tracking-[0.25em] text-blue-200 mb-0.5">EMOJI PASSPORT</div>
+      <div class="text-2xl">🛂</div>
+      <div class="text-[10px] text-blue-300 tracking-widest mt-0.5">xBU TALENT ACCELERATOR 2026</div>
+    </div>
+
+    <!-- Alias -->
+    <div class="px-6 pt-5 pb-3 text-center">
+      <div id="cardAlias" class="text-2xl font-extrabold text-[#1A1A2E] tracking-tight leading-tight"></div>
+    </div>
+
+    <!-- Divider -->
+    <div class="mx-6">
+      <div class="border-t-2 border-dashed border-gray-100"></div>
+    </div>
+
+    <!-- Emoji rows -->
+    <div class="px-6 py-3">
+      <div class="emoji-row">
+        <span id="cardHobbyEmoji"    class="text-3xl leading-none shrink-0"></span>
+        <span class="text-xs text-gray-500 font-medium">Hobby</span>
+      </div>
+      <div class="emoji-row">
+        <span id="cardStrengthEmoji" class="text-3xl leading-none shrink-0"></span>
+        <span id="cardStrengthLabel" class="text-xs text-gray-500 font-medium"></span>
+      </div>
+      <div class="emoji-row">
+        <span id="cardExpectEmoji"   class="text-3xl leading-none shrink-0"></span>
+        <span id="cardExpectLabel"   class="text-xs text-gray-500 font-medium"></span>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="mx-6">
+      <div class="border-t-2 border-dashed border-gray-100"></div>
+    </div>
+
+    <!-- QR code -->
+    <div class="flex flex-col items-center py-5">
+      <div id="qrContainer" class="rounded-xl overflow-hidden ring-4 ring-gray-50 pulse-ring"></div>
+      <p class="text-[10px] text-gray-400 mt-3 tracking-wide">SCAN MY QR TO COLLECT MY STAMP</p>
+      <div class="mt-2 flex items-center gap-1.5">
+        <span class="text-[10px] text-gray-400">Code:</span>
+        <code id="shortCode"
+          class="text-sm font-mono font-bold bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-lg tracking-widest"></code>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="card-footer">
+      <span class="text-sm text-blue-200 font-semibold">Stamps Collected: </span>
+      <span id="stampCount" class="text-sm font-extrabold text-white">0</span>
+      <span class="text-sm text-blue-200 font-semibold"> / <span id="targetCount">40</span></span>
+    </div>
+  </div>
+  <!-- /passportCard -->
+
+  <!-- ── Action buttons ── -->
+  <div class="w-full max-w-[340px] mt-5 space-y-2">
+    <button onclick="saveImage()"
+      class="w-full flex items-center justify-center gap-2 py-3.5
+             bg-white border-2 border-gray-200 rounded-xl font-semibold text-gray-700
+             hover:border-[#1F3864] hover:text-[#1F3864] transition-all active:scale-95">
+      💾 Save as Image
+    </button>
+    <div class="grid grid-cols-2 gap-2">
+      <a href="scan.html"
+         class="flex items-center justify-center gap-1.5 py-3.5
+                bg-[#1F3864] text-white rounded-xl font-semibold text-sm
+                hover:opacity-90 active:scale-95 transition-all">
+        📷 Scan Someone
+      </a>
+      <a href="met.html"
+         class="flex items-center justify-center gap-1.5 py-3.5
+                bg-[#4472C4] text-white rounded-xl font-semibold text-sm
+                hover:opacity-90 active:scale-95 transition-all">
+        👥 My Met List
+      </a>
+    </div>
+  </div>
+
+</div><!-- /mainContent -->
+
+<!-- ── Bottom Nav ── -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+  <div class="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+    <a href="passport.html" class="flex flex-col items-center flex-1 h-full justify-center gap-0.5 text-[#1F3864]">
+      <span class="text-2xl leading-none">🛂</span>
+      <span class="text-[10px] font-semibold">Passport</span>
+    </a>
+    <a href="scan.html" class="flex flex-col items-center flex-1 h-full justify-center gap-0.5 text-gray-400">
+      <span class="text-2xl leading-none">📷</span>
+      <span class="text-[10px] font-medium">Scan</span>
+    </a>
+    <a href="met.html" class="flex flex-col items-center flex-1 h-full justify-center gap-0.5 text-gray-400">
+      <span class="text-2xl leading-none">👥</span>
+      <span class="text-[10px] font-medium">Met</span>
+    </a>
+  </div>
+</nav>
+
+
+<!-- ═══════════════════════════════════════
+     SCRIPT
+═══════════════════════════════════════ -->
+<script type="module">
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, collection, onSnapshot }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDKCD-Oy3q4_FUJqp4CKZowBx8pvrk-2Tg",
+  authDomain:        "emoji-passport.firebaseapp.com",
+  projectId:         "emoji-passport",
+  storageBucket:     "emoji-passport.firebasestorage.app",
+  messagingSenderId: "999626118578",
+  appId:             "1:999626118578:web:7f2eca1da183fff778c0ab",
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function showError(icon, title, msg) {
+  document.getElementById('loadState').classList.add('hidden');
+  document.getElementById('errIcon').textContent  = icon;
+  document.getElementById('errTitle').textContent = title;
+  document.getElementById('errMsg').textContent   = msg;
+  document.getElementById('errState').classList.remove('hidden');
+}
+
+function setLoadMsg(msg) {
+  const el = document.getElementById('loadMsg');
+  if (el) el.textContent = msg;
+}
+
+// ── Outer fallback: if something silently hangs, show error after 12s ─────────
+let userData = null;
+const hangGuard = setTimeout(() => {
+  if (!userData) showError('⏱️', 'Taking too long',
+    'Could not reach Firebase. Check: (1) Firestore is enabled, (2) Rules allow reads, (3) Internet connection.');
+}, 12000);
+
+// ── Main async function (avoids top-level await compatibility issues) ─────────
+(async () => {
+  try {
+    // 1. userId check
+    const userId = localStorage.getItem('emojiPassportUserId');
+    if (!userId) {
+      clearTimeout(hangGuard);
+      showError('🛂', 'No passport yet', "You haven't created your passport. Tap below to set one up!");
+      return;
+    }
+
+    // 2. Firebase init (getApps guard prevents double-init error)
+    setLoadMsg('Connecting…');
+    const app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+    const db  = getFirestore(app);
+
+    // 3. Fetch user doc with explicit 10s timeout
+    setLoadMsg('Loading your passport…');
+    const snap = await Promise.race([
+      getDoc(doc(db, 'users', userId)),
+      new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error('timeout'), {code:'timeout'})), 10000)),
+    ]);
+
+    if (!snap.exists()) {
+      clearTimeout(hangGuard);
+      localStorage.removeItem('emojiPassportUserId');
+      showError('🗑️', 'Profile missing', 'Your profile was not found. Please create a new one.');
+      return;
+    }
+
+    userData = snap.data();
+    clearTimeout(hangGuard);
+
+    // 4. Populate card
+    document.getElementById('cardAlias').textContent        = userData.alias;
+    document.getElementById('cardHobbyEmoji').textContent    = userData.hobby_emoji;
+    document.getElementById('cardStrengthEmoji').textContent = userData.strength_emoji;
+    document.getElementById('cardStrengthLabel').textContent = userData.strength_label || 'Strength';
+    document.getElementById('cardExpectEmoji').textContent   = userData.expect_emoji;
+    document.getElementById('cardExpectLabel').textContent   = userData.expect_label  || 'Expectation';
+    document.getElementById('shortCode').textContent         = userId.slice(0, 4).toUpperCase();
+
+    // 5. Show card immediately
+    document.getElementById('loadState').classList.add('hidden');
+    document.getElementById('mainContent').classList.remove('hidden');
+
+    // 6. Real-time stamp count + target from settings
+    onSnapshot(collection(db, 'stamps', userId, 'collected'), s => {
+      document.getElementById('stampCount').textContent = s.size;
+    });
+    try {
+      const settingsSnap = await getDoc(doc(db, 'admin', 'settings'));
+      if (settingsSnap.exists() && settingsSnap.data().target_count) {
+        document.getElementById('targetCount').textContent = settingsSnap.data().target_count;
+      }
+    } catch { /* keep default 40 */ }
+
+    // 7. QR code — qrcode-generator is synchronous, no Promise needed
+    const qrUrl = `${window.location.origin}/scan?from=${userId}`;
+    try {
+      // qrcode-generator exposes global function `qrcode(typeNumber, errorCorrectionLevel)`
+      const qr = qrcode(0, 'H');   // 0 = auto version, H = high error correction
+      qr.addData(qrUrl);
+      qr.make();
+      // createImgTag(cellSize, margin, alt) returns an <img> HTML string with GIF data URL
+      const container = document.getElementById('qrContainer');
+      container.innerHTML = qr.createImgTag(5, 2, 'QR Code');
+      const img = container.querySelector('img');
+      if (img) {
+        img.style.cssText = 'width:200px;height:200px;image-rendering:pixelated;image-rendering:crisp-edges;display:block';
+      }
+    } catch (qrErr) {
+      console.warn('QR generation failed:', qrErr);
+      document.getElementById('qrContainer').innerHTML =
+        '<p class="text-xs text-gray-400 text-center p-4">QR unavailable — use short code</p>';
+    }
+
+    // 8. Save as Image
+    window.saveImage = async function() {
+      const btn = document.querySelector('[onclick="saveImage()"]');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '⏳ Generating…';
+      btn.disabled  = true;
+      try {
+        document.getElementById('qrContainer').style.animation = 'none';
+        const canvas = await window.html2canvas(document.getElementById('passportCard'), {
+          scale:2, useCORS:true, allowTaint:true, backgroundColor:'#ffffff', logging:false,
+        });
+        document.getElementById('qrContainer').style.animation = '';
+        Object.assign(document.createElement('a'), {
+          download: `emoji-passport-${userData.alias.replace(/\s+/g,'-')}.png`,
+          href:     canvas.toDataURL('image/png'),
+        }).click();
+      } catch(e) {
+        alert('Could not generate image — try a screenshot instead.');
+      } finally {
+        btn.innerHTML = orig;
+        btn.disabled  = false;
+      }
+    };
+
+  } catch (err) {
+    clearTimeout(hangGuard);
+    console.error('Passport load error:', err);
+    if (userData) return; // already showing
+    if (err.code === 'timeout')            showError('⏱️','Timeout','Firebase is slow. Check connection and rules.');
+    else if (err.code === 'permission-denied') showError('🔒','Permission denied','Set Firestore rules to Test Mode in Firebase Console.');
+    else                                   showError('😕','Error', err.message || 'Unknown error');
+  }
+})();
+</script>
+</body>
+</html>

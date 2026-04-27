@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1F3864">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Setup – Emoji Passport 🛂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind = {
+      config: {
+        theme: {
+          extend: {
+            colors: {
+              navy:  '#1F3864',
+              teal:  '#4472C4',
+              amber: '#FFC000',
+              epgreen: '#70AD47',
+            },
+            fontFamily: { sans: ['Inter','sans-serif'] }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+
+    .curated-btn {
+      position: relative;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 4px; padding: 10px 6px;
+      border: 2px solid #e5e7eb; border-radius: 12px;
+      cursor: pointer; transition: border-color .15s, background .15s;
+      background: white;
+    }
+    .curated-btn:hover  { border-color: #4472C4; background: #f0f4ff; }
+    .curated-btn.active { border-color: #1F3864; background: #eef2fb; }
+    .curated-btn.active::after {
+      content: '✓';
+      position: absolute; top: 3px; right: 5px;
+      font-size: 9px; font-weight: 700; color: #1F3864;
+    }
+    .expect-btn {
+      position: relative;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px;
+      border: 2px solid #e5e7eb; border-radius: 12px;
+      cursor: pointer; transition: border-color .15s, background .15s;
+      background: white; text-align: left;
+    }
+    .expect-btn:hover  { border-color: #70AD47; background: #f0faf0; }
+    .expect-btn.active { border-color: #1F3864; background: #eef2fb; }
+    .expect-btn.active::after {
+      content: '✓';
+      position: absolute; top: 3px; right: 6px;
+      font-size: 9px; font-weight: 700; color: #1F3864;
+    }
+    .hobby-chip {
+      font-size: 22px; padding: 6px;
+      border-radius: 8px; cursor: pointer;
+      transition: background .12s, transform .1s;
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    }
+    .hobby-chip:hover  { background: #f3f4f6; }
+    .hobby-chip.active { background: #fef3c7; outline: 2px solid #FFC000; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-6px); }
+      75%      { transform: translateX(6px); }
+    }
+    .shake { animation: shake 0.35s ease; }
+
+    @keyframes fadeIn {
+      from { opacity:0; transform:scale(.9); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    .fadein { animation: fadeIn .25s ease forwards; }
+  </style>
+</head>
+<body class="bg-[#F5F7FA] min-h-screen">
+
+<!-- ═══════════════════════════════════════
+     STEP 1 — Alias Entry
+═══════════════════════════════════════ -->
+<div id="step1" class="min-h-screen flex flex-col max-w-md mx-auto">
+
+  <!-- Header -->
+  <div class="bg-[#1F3864] text-white text-center px-6 pt-12 pb-8">
+    <div class="text-5xl mb-3">🛂</div>
+    <h1 class="text-2xl font-extrabold tracking-tight">Emoji Passport</h1>
+    <p class="text-blue-200 text-sm mt-1">xBU Talent Accelerator 2026</p>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="flex items-center px-8 py-5">
+    <div class="w-8 h-8 rounded-full bg-[#1F3864] text-white flex items-center justify-center text-sm font-bold shrink-0">1</div>
+    <div class="flex-1 h-0.5 bg-gray-200 mx-2"></div>
+    <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-sm font-bold shrink-0">2</div>
+    <span class="text-xs text-gray-400 ml-3 whitespace-nowrap">Step 1 of 2</span>
+  </div>
+
+  <!-- Content -->
+  <div class="flex-1 flex flex-col px-6 pb-8">
+    <h2 class="text-2xl font-bold text-[#1A1A2E] mb-1">What's your name?</h2>
+    <p class="text-gray-500 text-sm mb-6">This is how others will see you on the Live Wall</p>
+
+    <input
+      id="aliasInput"
+      type="text"
+      placeholder="Your name / alias (e.g. Sarah Lee)"
+      maxlength="30"
+      autofocus
+      autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"
+      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 text-lg
+             focus:outline-none focus:border-[#1F3864] transition-colors bg-white"
+    />
+    <p id="aliasError" class="text-red-500 text-sm mt-2 hidden"></p>
+    <p class="text-gray-400 text-xs mt-2">2–30 characters. Chinese names welcome 😊</p>
+
+    <button
+      id="nextBtn"
+      onclick="goToStep2()"
+      class="mt-8 w-full bg-[#1F3864] text-white py-4 rounded-2xl text-lg font-semibold
+             transition-all hover:opacity-90 active:scale-95"
+    >
+      Next →
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     STEP 2 — Pick 3 Emojis
+═══════════════════════════════════════ -->
+<div id="step2" class="hidden min-h-screen">
+
+  <!-- Sticky header -->
+  <div class="sticky top-0 z-20 bg-[#1F3864] text-white px-4 py-4">
+    <div class="flex items-center justify-between max-w-md mx-auto">
+      <button onclick="goToStep1()" class="text-blue-200 text-sm font-medium px-2 py-1">← Back</button>
+      <div class="text-center">
+        <div class="font-bold">Pick Your 3 Emojis</div>
+        <div class="text-blue-200 text-xs">Step 2 of 2</div>
+      </div>
+      <div class="w-16"></div>
+    </div>
+  </div>
+
+  <div class="max-w-md mx-auto px-4 pb-48 pt-3 space-y-4">
+
+    <!-- ── SECTION A: Hobby ── -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100">
+        <div>
+          <div class="font-semibold text-[#1A1A2E] text-sm">Hobby Emoji</div>
+          <div class="text-xs text-gray-500">What do you love outside work?</div>
+        </div>
+        <div id="hobbyPreviewHeader" class="text-3xl shrink-0 transition-all"></div>
+      </div>
+      <div class="p-4">
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Quick pick</p>
+        <div id="hobbyGrid" class="grid grid-cols-8 gap-1"></div>
+        <div class="mt-4 pt-3 border-t border-gray-100">
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
+            Or use your keyboard emoji 😊 picker
+          </p>
+          <input
+            id="hobbyCustom"
+            type="text"
+            placeholder="Tap here → press 😊 on your keyboard"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-2xl
+                   focus:outline-none focus:border-[#FFC000] text-center transition-colors"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION B: Work Strength ── -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-blue-50 border-b border-blue-100">
+        <div>
+          <div class="font-semibold text-[#1A1A2E] text-sm">Work Strength</div>
+          <div class="text-xs text-gray-500">Your strongest work superpower?</div>
+        </div>
+        <div id="strengthPreviewHeader" class="text-3xl shrink-0 transition-all"></div>
+      </div>
+      <div class="p-4">
+        <div id="strengthGrid" class="grid grid-cols-3 gap-2"></div>
+        <div id="strengthOtherBox" class="hidden mt-3 space-y-2 fadein">
+          <input id="strengthOtherEmoji" type="text" placeholder="Tap → type emoji 🙂"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-3xl text-center
+                   focus:outline-none focus:border-[#1F3864] transition-colors" />
+          <input id="strengthOtherLabel" type="text" maxlength="30"
+            placeholder="Label your superpower (e.g. Mediator)"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
+                   focus:outline-none focus:border-[#1F3864] transition-colors" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION C: Programme Expectation ── -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-green-50 border-b border-green-100">
+        <div>
+          <div class="font-semibold text-[#1A1A2E] text-sm">Programme Expectation</div>
+          <div class="text-xs text-gray-500">What do you most hope to get from this programme?</div>
+        </div>
+        <div id="expectPreviewHeader" class="text-3xl shrink-0 transition-all"></div>
+      </div>
+      <div class="p-4">
+        <div id="expectGrid" class="grid grid-cols-2 gap-2"></div>
+        <div id="expectOtherBox" class="hidden mt-3 space-y-2 fadein">
+          <input id="expectOtherEmoji" type="text" placeholder="Tap → type emoji 🙂"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-3xl text-center
+                   focus:outline-none focus:border-[#1F3864] transition-colors" />
+          <input id="expectOtherLabel" type="text" maxlength="40"
+            placeholder="Label your expectation (e.g. Find my mentor)"
+            class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
+                   focus:outline-none focus:border-[#1F3864] transition-colors" />
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- ── Fixed bottom bar ── -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
+    <div class="max-w-md mx-auto px-4 py-3">
+      <!-- 3-emoji preview -->
+      <div class="flex justify-around items-end mb-3">
+        <div class="text-center">
+          <div id="prev1" class="text-4xl h-10 flex items-center justify-center">
+            <span class="text-gray-200 text-2xl">🎸</span>
+          </div>
+          <div class="text-[10px] text-gray-400 mt-0.5">Hobby</div>
+        </div>
+        <div class="text-center">
+          <div id="prev2" class="text-4xl h-10 flex items-center justify-center">
+            <span class="text-gray-200 text-2xl">💪</span>
+          </div>
+          <div class="text-[10px] text-gray-400 mt-0.5">Strength</div>
+        </div>
+        <div class="text-center">
+          <div id="prev3" class="text-4xl h-10 flex items-center justify-center">
+            <span class="text-gray-200 text-2xl">🌱</span>
+          </div>
+          <div class="text-[10px] text-gray-400 mt-0.5">Expectation</div>
+        </div>
+      </div>
+      <button id="submitBtn" disabled onclick="submitProfile()"
+        class="w-full py-4 rounded-2xl text-base font-semibold transition-all
+               bg-gray-100 text-gray-400 cursor-not-allowed">
+        Create My Passport 🛂
+      </button>
+      <p id="submitErr" class="text-red-500 text-xs text-center mt-2 hidden"></p>
+    </div>
+  </div>
+
+</div><!-- /step2 -->
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" class="hidden fixed inset-0 bg-[#1F3864]/90 flex items-center justify-center z-50">
+  <div class="text-center text-white">
+    <div class="text-6xl mb-4 animate-spin">🛂</div>
+    <p class="text-xl font-bold">Creating your passport…</p>
+    <p class="text-blue-200 text-sm mt-1">Just a moment</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCRIPT
+═══════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }           from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, addDoc, serverTimestamp }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const app = initializeApp({
+  apiKey:            "AIzaSyDKCD-Oy3q4_FUJqp4CKZowBx8pvrk-2Tg",
+  authDomain:        "emoji-passport.firebaseapp.com",
+  projectId:         "emoji-passport",
+  storageBucket:     "emoji-passport.firebasestorage.app",
+  messagingSenderId: "999626118578",
+  appId:             "1:999626118578:web:7f2eca1da183fff778c0ab",
+});
+const db = getFirestore(app);
+
+// Already registered → skip setup
+if (localStorage.getItem('emojiPassportUserId')) {
+  window.location.replace('passport.html');
+}
+
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+const HOBBY_EMOJIS = [
+  // Music & Arts
+  '🎸','🎵','🎹','🎨','🖌️','📷','🎬','🎭',
+  // Sports & Fitness
+  '🏃','🚴','🏊','🧘','🏋️','⚽','🏀','🎾',
+  // Outdoors & Nature
+  '🌿','🏔️','🌊','🏖️','🌸','🦋','🐕','🌺',
+  // Food & Drink
+  '🍕','☕','🍣','🍺','🎂','🍓','🍜','🫖',
+  // Tech & Games
+  '💻','🎮','📚','✈️','🌍','🚀','🎲','🧩',
+  // Lifestyle
+  '💃','🕺','🧁','🌙','⭐','🏆','🎯','✍️',
+];
+
+const STRENGTH_OPTIONS = [
+  { emoji:'💡', label:'Creative / Innovative'     },
+  { emoji:'🔍', label:'Analytical / Research'     },
+  { emoji:'🤝', label:'Collaborative / Connector' },
+  { emoji:'📊', label:'Data-driven'               },
+  { emoji:'🎯', label:'Execution / Delivery'      },
+  { emoji:'💬', label:'Communication'             },
+  { emoji:'🔬', label:'Technical / Specialist'    },
+  { emoji:'🌐', label:'Strategic Thinker'         },
+  { emoji:'⚡', label:'Agile / Fast-mover'        },
+  { emoji:'🛠️', label:'Problem-solver'            },
+  { emoji:'👁️', label:'Observer / Listener'       },
+  { emoji:'🌱', label:'People Developer'          },
+];
+
+const EXPECT_OPTIONS = [
+  { emoji:'🚀', label:'Accelerate my career'           },
+  { emoji:'🤝', label:'Build cross-BU relationships'   },
+  { emoji:'💡', label:'Learn new skills'               },
+  { emoji:'🌱', label:'Personal growth'                },
+  { emoji:'🏆', label:'Challenge myself'               },
+  { emoji:'🔗', label:'Understand the whole business'  },
+  { emoji:'💪', label:'Build my confidence'            },
+  { emoji:'🌍', label:'Create real impact'             },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+const S = {
+  alias:          '',
+  hobby:          '',
+  strength:       '',
+  strengthLabel:  '',
+  strengthOther:  false,
+  expect:         '',
+  expectLabel:    '',
+  expectOther:    false,
+};
+
+// ── Build grids ───────────────────────────────────────────────────────────────
+
+function buildHobbyGrid() {
+  const el = document.getElementById('hobbyGrid');
+  el.innerHTML = HOBBY_EMOJIS.map(e =>
+    `<button class="hobby-chip" data-emoji="${e}">${e}</button>`
+  ).join('');
+  el.addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-emoji]');
+    if (!btn) return;
+    setHobby(btn.dataset.emoji);
+    document.getElementById('hobbyCustom').value = '';
+  });
+}
+
+function buildStrengthGrid() {
+  const el = document.getElementById('strengthGrid');
+  el.innerHTML = STRENGTH_OPTIONS.map((o, i) =>
+    `<button class="curated-btn" data-idx="${i}">
+       <span style="font-size:28px;line-height:1">${o.emoji}</span>
+       <span style="font-size:10px;color:#6b7280;text-align:center;line-height:1.3">${o.label}</span>
+     </button>`
+  ).join('') +
+    `<button class="curated-btn" id="sOtherBtn" data-other="strength">
+       <span style="font-size:22px;line-height:1">➕</span>
+       <span style="font-size:10px;color:#6b7280;text-align:center;line-height:1.3">Other</span>
+     </button>`;
+  el.addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-idx],[data-other]');
+    if (!btn) return;
+    if (btn.dataset.other) { pickStrengthOther(); return; }
+    pickStrength(parseInt(btn.dataset.idx));
+  });
+}
+
+function buildExpectGrid() {
+  const el = document.getElementById('expectGrid');
+  el.innerHTML = EXPECT_OPTIONS.map((o, i) =>
+    `<button class="expect-btn" data-idx="${i}">
+       <span style="font-size:24px;line-height:1;flex-shrink:0">${o.emoji}</span>
+       <span style="font-size:11px;color:#374151;line-height:1.3">${o.label}</span>
+     </button>`
+  ).join('') +
+    `<button class="expect-btn" id="eOtherBtn" data-other="expect">
+       <span style="font-size:22px;line-height:1;flex-shrink:0">➕</span>
+       <span style="font-size:11px;color:#6b7280">Other</span>
+     </button>`;
+  el.addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-idx],[data-other]');
+    if (!btn) return;
+    if (btn.dataset.other) { pickExpectOther(); return; }
+    pickExpect(parseInt(btn.dataset.idx));
+  });
+}
+
+// ── Pick handlers ─────────────────────────────────────────────────────────────
+
+function setHobby(emoji) {
+  S.hobby = emoji;
+  document.querySelectorAll('.hobby-chip').forEach(b =>
+    b.classList.toggle('active', b.dataset.emoji === emoji)
+  );
+  refresh();
+}
+
+function pickStrength(idx) {
+  S.strength      = STRENGTH_OPTIONS[idx].emoji;
+  S.strengthLabel = STRENGTH_OPTIONS[idx].label;
+  S.strengthOther = false;
+  document.getElementById('strengthOtherBox').classList.add('hidden');
+  document.querySelectorAll('#strengthGrid .curated-btn').forEach((b, i) =>
+    b.classList.toggle('active', i === idx)
+  );
+  refresh();
+}
+
+function pickStrengthOther() {
+  S.strengthOther = true;
+  S.strength = ''; S.strengthLabel = '';
+  document.querySelectorAll('#strengthGrid .curated-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sOtherBtn').classList.add('active');
+  const box = document.getElementById('strengthOtherBox');
+  box.classList.remove('hidden');
+  document.getElementById('strengthOtherEmoji').focus();
+  refresh();
+}
+
+function pickExpect(idx) {
+  S.expect      = EXPECT_OPTIONS[idx].emoji;
+  S.expectLabel = EXPECT_OPTIONS[idx].label;
+  S.expectOther = false;
+  document.getElementById('expectOtherBox').classList.add('hidden');
+  document.querySelectorAll('#expectGrid .expect-btn').forEach((b, i) =>
+    b.classList.toggle('active', i === idx)
+  );
+  refresh();
+}
+
+function pickExpectOther() {
+  S.expectOther = true;
+  S.expect = ''; S.expectLabel = '';
+  document.querySelectorAll('#expectGrid .expect-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('eOtherBtn').classList.add('active');
+  const box = document.getElementById('expectOtherBox');
+  box.classList.remove('hidden');
+  document.getElementById('expectOtherEmoji').focus();
+  refresh();
+}
+
+// ── Emoji extraction ──────────────────────────────────────────────────────────
+
+function firstEmoji(str) {
+  if (!str) return null;
+  // Use Intl.Segmenter for proper grapheme cluster support (handles skin tones, ZWJ sequences)
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    for (const { segment } of seg.segment(str)) {
+      if (/\p{Emoji}/u.test(segment) && segment.trim() !== '') return segment;
+    }
+  }
+  const m = str.match(/\p{Emoji_Presentation}|\p{Emoji}\uFE0F/u);
+  return m ? m[0] : null;
+}
+
+// ── Input listeners for "Other" boxes ────────────────────────────────────────
+
+document.getElementById('hobbyCustom').addEventListener('input', function() {
+  const e = firstEmoji(this.value);
+  if (e) {
+    S.hobby = e;
+    document.querySelectorAll('.hobby-chip').forEach(b => b.classList.remove('active'));
+    refresh();
+  }
+});
+
+document.getElementById('strengthOtherEmoji').addEventListener('input', function() {
+  const e = firstEmoji(this.value);
+  if (e) { S.strength = e; refresh(); }
+});
+document.getElementById('strengthOtherLabel').addEventListener('input', function() {
+  S.strengthLabel = this.value.trim(); refresh();
+});
+
+document.getElementById('expectOtherEmoji').addEventListener('input', function() {
+  const e = firstEmoji(this.value);
+  if (e) { S.expect = e; refresh(); }
+});
+document.getElementById('expectOtherLabel').addEventListener('input', function() {
+  S.expectLabel = this.value.trim(); refresh();
+});
+
+// ── Refresh previews + submit button ─────────────────────────────────────────
+
+function refresh() {
+  const slot = (id, val, placeholder) => {
+    const el = document.getElementById(id);
+    el.innerHTML = val
+      ? `<span>${val}</span>`
+      : `<span style="font-size:1.5rem;color:#d1d5db">${placeholder}</span>`;
+  };
+  slot('prev1', S.hobby,    '🎸');
+  slot('prev2', S.strength, '💪');
+  slot('prev3', S.expect,   '🌱');
+
+  document.getElementById('hobbyPreviewHeader').textContent    = S.hobby    || '';
+  document.getElementById('strengthPreviewHeader').textContent = S.strength || '';
+  document.getElementById('expectPreviewHeader').textContent   = S.expect   || '';
+
+  const ready =
+    S.hobby && S.strength && S.expect &&
+    (!S.strengthOther || (S.strength && S.strengthLabel)) &&
+    (!S.expectOther   || (S.expect   && S.expectLabel));
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled  = !ready;
+  btn.className = ready
+    ? 'w-full py-4 rounded-2xl text-base font-semibold transition-all bg-[#1F3864] text-white hover:opacity-90 active:scale-95 cursor-pointer'
+    : 'w-full py-4 rounded-2xl text-base font-semibold transition-all bg-gray-100 text-gray-400 cursor-not-allowed';
+}
+
+// ── Step navigation ───────────────────────────────────────────────────────────
+
+window.goToStep2 = function() {
+  const alias = document.getElementById('aliasInput').value.trim();
+  const err   = document.getElementById('aliasError');
+
+  if (alias.length < 2) {
+    err.textContent = 'Please enter at least 2 characters.';
+    err.classList.remove('hidden');
+    document.getElementById('aliasInput').classList.add('shake');
+    setTimeout(() => document.getElementById('aliasInput').classList.remove('shake'), 400);
+    return;
+  }
+  if (alias.length > 30) {
+    err.textContent = 'Maximum 30 characters.';
+    err.classList.remove('hidden');
+    return;
+  }
+  if (/[<>"'&]/.test(alias)) {
+    err.textContent = 'Please avoid < > " \' & characters.';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  S.alias = alias;
+  err.classList.add('hidden');
+  document.getElementById('step1').classList.add('hidden');
+  document.getElementById('step2').classList.remove('hidden');
+  window.scrollTo(0, 0);
+};
+
+window.goToStep1 = function() {
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step1').classList.remove('hidden');
+  window.scrollTo(0, 0);
+};
+
+document.getElementById('aliasInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.goToStep2();
+});
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+
+window.submitProfile = async function() {
+  const errEl = document.getElementById('submitErr');
+  errEl.classList.add('hidden');
+
+  if (!S.alias || !S.hobby || !S.strength || !S.expect) {
+    errEl.textContent = 'Please complete all three sections.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (S.strengthOther && !S.strengthLabel) {
+    errEl.textContent = 'Please add a label for your strength.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (S.expectOther && !S.expectLabel) {
+    errEl.textContent = 'Please add a label for your expectation.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+
+  try {
+    const ref = await addDoc(collection(db, 'users'), {
+      alias:          S.alias,
+      hobby_emoji:    S.hobby,
+      strength_emoji: S.strength,
+      strength_label: S.strengthLabel,
+      expect_emoji:   S.expect,
+      expect_label:   S.expectLabel,
+      created_at:     serverTimestamp(),
+    });
+    localStorage.setItem('emojiPassportUserId', ref.id);
+    window.location.replace('passport.html');
+  } catch (err) {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    errEl.textContent = 'Save failed — check your connection and try again.';
+    errEl.classList.remove('hidden');
+    console.error(err);
+  }
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+buildHobbyGrid();
+buildStrengthGrid();
+buildExpectGrid();
+</script>
+</body>
+</html>

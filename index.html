@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1F3864">
+  <title>Emoji Passport 🛂</title>
+  <script>tailwind={config:{theme:{extend:{colors:{navy:'#1F3864'}}}}}</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[#1F3864] flex items-center justify-center">
+  <div class="text-center text-white">
+    <div class="text-7xl mb-4">🛂</div>
+    <p class="text-blue-200 text-lg">Loading your passport…</p>
+  </div>
+  <script>
+    const userId = localStorage.getItem('emojiPassportUserId');
+    // Redirect immediately — spinner is just a flash fallback
+    window.location.replace(userId ? 'passport.html' : 'setup.html');
+  </script>
+</body>
+</html>
