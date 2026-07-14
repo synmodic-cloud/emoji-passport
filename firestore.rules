@@ -7,7 +7,7 @@ service cloud.firestore {
       allow read: true;
       allow create: true;
       allow update: if false;
-      allow delete: if false;
+      allow delete: if true;
     }
 
     // Anyone can write stamps (event context, low risk)
