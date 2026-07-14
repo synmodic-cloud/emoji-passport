@@ -22,5 +22,11 @@ service cloud.firestore {
       allow read: true;
       allow write: true;
     }
+
+    // Session history log (written by admin on new session)
+    match /sessions/{sessionId} {
+      allow read: true;
+      allow write: true;
+    }
   }
 }

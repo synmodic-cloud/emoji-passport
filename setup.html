@@ -522,11 +522,21 @@ window.submitProfile = async function() {
   document.getElementById('loadingOverlay').classList.remove('hidden');
 
   try {
+    // Always fetch the latest active_session at submit time so the user
+    // gets tagged correctly even if the admin started a new session after
+    // this page was loaded.
+    let currentSession = null;
+    try {
+      const settingsSnap = await getDoc(doc(db, 'admin', 'settings'));
+      if (settingsSnap.exists()) currentSession = settingsSnap.data().active_session || null;
+    } catch { /* fall back to null session */ }
+
     const ref = await addDoc(collection(db, 'users'), {
       alias:          S.alias,
       hobby_emoji:    S.hobby,
       strength_emoji: S.strength,
       expect_emoji:   S.expect,
+      session:        currentSession,
       created_at:     serverTimestamp(),
     });
     localStorage.setItem('emojiPassportUserId', ref.id);
@@ -545,12 +555,14 @@ buildHobbyGrid();
 buildStrengthGrid();
 buildExpectGrid();
 
-// Load event name from settings (best-effort, non-blocking)
+// Load event name + active session from settings (best-effort, non-blocking)
 (async () => {
   try {
     const snap = await getDoc(doc(db, 'admin', 'settings'));
-    if (snap.exists() && snap.data().event_name) {
-      document.getElementById('setupEventName').textContent = snap.data().event_name;
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d.event_name)     document.getElementById('setupEventName').textContent = d.event_name;
+      if (d.active_session) activeSession = d.active_session;
     }
   } catch { /* keep default */ }
 })();

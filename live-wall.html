@@ -311,7 +311,7 @@
 
 <script type="module">
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot }
+import { getFirestore, collection, doc, onSnapshot, query, where }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = getApps().length ? getApps()[0] : initializeApp({
@@ -339,6 +339,8 @@ let   tickerTimer   = null;
 let   wallActive    = false;
 let   isFirstLoad   = true;
 let   lastJoinUrl   = '';
+let   activeSession = null;
+let   usersUnsub    = null;
 
 // ── QR code renderer ──────────────────────────────────────────────────────────
 
@@ -406,22 +408,65 @@ function showTicker(alias, emojis) {
   tickerTimer = setTimeout(() => ticker.classList.remove('show'), 3500);
 }
 
+// ── Users listener (session-aware) ───────────────────────────────────────────
+
+function startUsersListener() {
+  if (usersUnsub) usersUnsub();
+  renderedCards.clear();
+  wallGrid.innerHTML = '';
+  isFirstLoad = true;
+  countEl.textContent = '0';
+
+  const usersQuery = activeSession
+    ? query(collection(db, 'users'), where('session', '==', activeSession))
+    : collection(db, 'users');
+
+  usersUnsub = onSnapshot(usersQuery, (snap) => {
+    snap.docChanges().forEach((change) => {
+      if (change.type === 'added') {
+        const { id } = change.doc;
+        const data   = change.doc.data();
+        if (renderedCards.has(id)) return;
+
+        const card = makeCard(id, data);
+        renderedCards.set(id, card);
+        wallGrid.appendChild(card);
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => card.classList.add('card-enter'));
+        });
+
+        if (!isFirstLoad && wallActive) {
+          showTicker(data.alias, `${data.hobby_emoji}${data.strength_emoji}${data.expect_emoji}`);
+        }
+      }
+    });
+
+    if (isFirstLoad) isFirstLoad = false;
+    countEl.textContent = renderedCards.size;
+  });
+}
+
 // ── Admin settings listener ───────────────────────────────────────────────────
 
 onSnapshot(doc(db, 'admin', 'settings'), (snap) => {
   const data = snap.exists() ? snap.data() : {};
   wallActive = data.livewall_active === true;
 
-  // Event name
   if (data.event_name) {
     document.getElementById('wallEventName').textContent = data.event_name;
   }
 
-  // Target count
   document.getElementById('targetEl').textContent = data.target_count ?? 40;
 
-  // Join QR
   renderWallQr(data.join_url || '');
+
+  // Session change → restart users listener
+  const newSession = data.active_session || null;
+  if (newSession !== activeSession) {
+    activeSession = newSession;
+    startUsersListener();
+  }
 
   if (wallActive) {
     standby.style.display = 'none';
@@ -434,32 +479,7 @@ onSnapshot(doc(db, 'admin', 'settings'), (snap) => {
   // Settings missing → stay on standby
 });
 
-// ── Users listener ────────────────────────────────────────────────────────────
-
-onSnapshot(collection(db, 'users'), (snap) => {
-  snap.docChanges().forEach((change) => {
-    if (change.type === 'added') {
-      const { id } = change.doc;
-      const data   = change.doc.data();
-      if (renderedCards.has(id)) return;
-
-      const card = makeCard(id, data);
-      renderedCards.set(id, card);
-      wallGrid.appendChild(card);
-
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => card.classList.add('card-enter'));
-      });
-
-      if (!isFirstLoad && wallActive) {
-        showTicker(data.alias, `${data.hobby_emoji}${data.strength_emoji}${data.expect_emoji}`);
-      }
-    }
-  });
-
-  if (isFirstLoad) isFirstLoad = false;
-  countEl.textContent = renderedCards.size;
-});
+startUsersListener();
 </script>
 </body>
 </html>

@@ -156,7 +156,7 @@
 
 <script type="module">
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot }
+import { getFirestore, collection, doc, onSnapshot, query, where }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = getApps().length ? getApps()[0] : initializeApp({
@@ -180,8 +180,10 @@ const cloudSub     = document.getElementById('cloudSubtitle');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let allUsers  = [];   // array of user data objects
-let curView   = -1;   // current wordcloud_view value
+let allUsers      = [];
+let curView       = -1;
+let activeSession = null;
+let usersUnsub    = null;
 
 // ── View config ───────────────────────────────────────────────────────────────
 
@@ -320,20 +322,38 @@ function switchView(newView) {
 
 // ── Listeners ─────────────────────────────────────────────────────────────────
 
-// Admin settings → wordcloud_view
+function startUsersListener() {
+  if (usersUnsub) usersUnsub();
+  allUsers = [];
+  if (curView > 0) renderCloud(curView);
+
+  const usersQuery = activeSession
+    ? query(collection(db, 'users'), where('session', '==', activeSession))
+    : collection(db, 'users');
+
+  usersUnsub = onSnapshot(usersQuery, (snap) => {
+    allUsers = snap.docs.map(d => d.data());
+    if (curView > 0) renderCloud(curView);
+  });
+}
+
+// Admin settings → wordcloud_view + session
 onSnapshot(doc(db, 'admin', 'settings'), (snap) => {
-  const view = snap.exists() ? (snap.data().wordcloud_view ?? 0) : 0;
+  const data = snap.exists() ? snap.data() : {};
+  const view = data.wordcloud_view ?? 0;
+
+  const newSession = data.active_session || null;
+  if (newSession !== activeSession) {
+    activeSession = newSession;
+    startUsersListener();
+  }
+
   switchView(view);
 }, () => {
-  switchView(0); // settings doc missing → standby
+  switchView(0);
 });
 
-// Users collection → live data
-onSnapshot(collection(db, 'users'), (snap) => {
-  allUsers = snap.docs.map(d => d.data());
-  // Re-render if a live view is active
-  if (curView > 0) renderCloud(curView);
-});
+startUsersListener();
 </script>
 </body>
 </html>
