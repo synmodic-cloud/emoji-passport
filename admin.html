@@ -295,6 +295,11 @@
           <span id="tableCount" class="ml-2 text-[#1F3864] font-extrabold text-sm">—</span>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
+          <button id="deleteSelectedBtn" onclick="deleteSelected()" style="display:none"
+            class="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200
+                   px-3 py-1.5 rounded-lg transition-all whitespace-nowrap">
+            🗑 Delete selected (<span id="deleteSelectedCount">0</span>)
+          </button>
           <select id="sessionSelector" onchange="changeSession(this.value)"
             class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 font-medium
                    focus:outline-none focus:border-[#1F3864] bg-white cursor-pointer">
@@ -321,6 +326,7 @@
         <table class="data-table">
           <thead>
             <tr>
+              <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="cursor-pointer"></th>
               <th>#</th>
               <th>Alias</th>
               <th>Hobby</th>
@@ -819,6 +825,7 @@ async function renderTable() {
     .sort((a, b) => (a.created_at?.toMillis?.() ?? 0) - (b.created_at?.toMillis?.() ?? 0))
     .map((u, i) => `
       <tr>
+        <td><input type="checkbox" class="row-check cursor-pointer" data-id="${u.id}" onchange="updateDeleteBtn()"></td>
         <td class="text-gray-400 font-mono text-xs">${i + 1}</td>
         <td class="font-semibold text-[#1A1A2E]">${escHtml(u.alias)}</td>
         <td class="text-xl">${u.hobby_emoji || '—'}</td>
@@ -829,6 +836,57 @@ async function renderTable() {
       </tr>
     `).join('');
 }
+
+// ── Delete selected users ─────────────────────────────────────────────────────
+
+function updateDeleteBtn() {
+  const checked = document.querySelectorAll('.row-check:checked');
+  const btn = document.getElementById('deleteSelectedBtn');
+  const countEl = document.getElementById('deleteSelectedCount');
+  if (checked.length > 0) {
+    countEl.textContent = checked.length;
+    btn.style.display = '';
+  } else {
+    btn.style.display = 'none';
+  }
+  // Sync select-all state
+  const all = document.querySelectorAll('.row-check');
+  const selectAll = document.getElementById('selectAll');
+  if (selectAll) selectAll.checked = all.length > 0 && checked.length === all.length;
+}
+
+window.toggleSelectAll = function(cb) {
+  document.querySelectorAll('.row-check').forEach(c => { c.checked = cb.checked; });
+  updateDeleteBtn();
+};
+
+window.deleteSelected = async function() {
+  const checked = [...document.querySelectorAll('.row-check:checked')];
+  if (!checked.length) return;
+  const names = checked.map(c => {
+    const row = c.closest('tr');
+    return row ? row.cells[2].textContent : c.dataset.id;
+  });
+  const preview = names.slice(0, 5).join(', ') + (names.length > 5 ? ` … +${names.length - 5} more` : '');
+  if (!confirm(`Delete ${checked.length} record${checked.length > 1 ? 's' : ''}?\n\n${preview}\n\nThis removes their passports and all stamps. Cannot be undone.`)) return;
+
+  const userIds = checked.map(c => c.dataset.id);
+  try {
+    for (const userId of userIds) {
+      const stampsSnap = await getDocs(collection(db, 'stamps', userId, 'collected'));
+      if (stampsSnap.size > 0) {
+        const batch = writeBatch(db);
+        stampsSnap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+      await deleteDoc(doc(db, 'stamps', userId)).catch(() => {});
+      await deleteDoc(doc(db, 'users', userId));
+      delete stampTotals[userId];
+    }
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
+  }
+};
 
 // ── CSV Export ────────────────────────────────────────────────────────────────
 
