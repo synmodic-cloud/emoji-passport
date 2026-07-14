@@ -555,14 +555,12 @@ buildHobbyGrid();
 buildStrengthGrid();
 buildExpectGrid();
 
-// Load event name + active session from settings (best-effort, non-blocking)
+// Load event name from settings (best-effort, non-blocking)
 (async () => {
   try {
     const snap = await getDoc(doc(db, 'admin', 'settings'));
-    if (snap.exists()) {
-      const d = snap.data();
-      if (d.event_name)     document.getElementById('setupEventName').textContent = d.event_name;
-      if (d.active_session) activeSession = d.active_session;
+    if (snap.exists() && snap.data().event_name) {
+      document.getElementById('setupEventName').textContent = snap.data().event_name;
     }
   } catch { /* keep default */ }
 })();
