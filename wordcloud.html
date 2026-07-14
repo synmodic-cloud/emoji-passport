@@ -211,14 +211,14 @@ const VIEW_CONFIG = {
     getItems: (users) => users
       .filter(u => u.strength_emoji)
       .map(u => ({ emoji: u.strength_emoji, label: u.strength_label })),
-    subtitle: (top) => `Most common: ${top.emoji}  ${top.label || ''}  — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
+    subtitle: (top) => `Most common: ${top.emoji} — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
   },
   4: {
     title:    '🌱 What You Expect Most from the Programme',
     getItems: (users) => users
       .filter(u => u.expect_emoji)
       .map(u => ({ emoji: u.expect_emoji, label: u.expect_label })),
-    subtitle: (top) => `Most expected: ${top.emoji}  ${top.label || ''}  — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
+    subtitle: (top) => `Most expected: ${top.emoji} — ${top.count} ${top.count === 1 ? 'person' : 'people'}`,
   },
 };
 

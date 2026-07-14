@@ -120,7 +120,7 @@
     <div class="card-header">
       <div class="text-xs font-bold tracking-[0.25em] text-blue-200 mb-0.5">EMOJI PASSPORT</div>
       <div class="text-2xl">🛂</div>
-      <div class="text-[10px] text-blue-300 tracking-widest mt-0.5">xBU TALENT ACCELERATOR 2026</div>
+      <div id="cardEventName" class="text-[10px] text-blue-300 tracking-widest mt-0.5">xBU TALENT ACCELERATOR 2026</div>
     </div>
 
     <!-- Alias -->
@@ -141,11 +141,11 @@
       </div>
       <div class="emoji-row">
         <span id="cardStrengthEmoji" class="text-3xl leading-none shrink-0"></span>
-        <span id="cardStrengthLabel" class="text-xs text-gray-500 font-medium"></span>
+        <span class="text-xs text-gray-500 font-medium">Strength</span>
       </div>
       <div class="emoji-row">
         <span id="cardExpectEmoji"   class="text-3xl leading-none shrink-0"></span>
-        <span id="cardExpectLabel"   class="text-xs text-gray-500 font-medium"></span>
+        <span class="text-xs text-gray-500 font-medium">Expectation</span>
       </div>
     </div>
 
@@ -295,9 +295,7 @@ const hangGuard = setTimeout(() => {
     document.getElementById('cardAlias').textContent        = userData.alias;
     document.getElementById('cardHobbyEmoji').textContent    = userData.hobby_emoji;
     document.getElementById('cardStrengthEmoji').textContent = userData.strength_emoji;
-    document.getElementById('cardStrengthLabel').textContent = userData.strength_label || 'Strength';
     document.getElementById('cardExpectEmoji').textContent   = userData.expect_emoji;
-    document.getElementById('cardExpectLabel').textContent   = userData.expect_label  || 'Expectation';
     document.getElementById('shortCode').textContent         = userId.slice(0, 4).toUpperCase();
 
     // 5. Show card immediately
@@ -310,10 +308,12 @@ const hangGuard = setTimeout(() => {
     });
     try {
       const settingsSnap = await getDoc(doc(db, 'admin', 'settings'));
-      if (settingsSnap.exists() && settingsSnap.data().target_count) {
-        document.getElementById('targetCount').textContent = settingsSnap.data().target_count;
+      if (settingsSnap.exists()) {
+        const sd = settingsSnap.data();
+        if (sd.target_count) document.getElementById('targetCount').textContent = sd.target_count;
+        if (sd.event_name)   document.getElementById('cardEventName').textContent = sd.event_name.toUpperCase();
       }
-    } catch { /* keep default 40 */ }
+    } catch { /* keep defaults */ }
 
     // 7. QR code — qrcode-generator is synchronous, no Promise needed
     const qrUrl = `${window.location.origin}/scan?from=${userId}`;

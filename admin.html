@@ -14,6 +14,7 @@
     }}}}
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 
   <style>
     body { font-family: 'Inter', sans-serif; }
@@ -126,7 +127,7 @@
   <div class="bg-[#1F3864] text-white px-6 py-4 flex items-center justify-between">
     <div>
       <div class="font-extrabold text-lg">🛂 Emoji Passport Admin</div>
-      <div class="text-blue-300 text-xs font-medium">xBU BB2 Talent Accelerator 2026</div>
+      <div id="adminEventName" class="text-blue-300 text-xs font-medium">xBU BB2 Talent Accelerator 2026</div>
     </div>
     <button onclick="logout()"
       class="text-xs text-blue-300 font-semibold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all">
@@ -135,6 +136,65 @@
   </div>
 
   <div class="max-w-4xl mx-auto px-4 py-6 space-y-5">
+
+    <!-- ── Event Name ── -->
+    <div class="bg-white rounded-2xl shadow-sm p-5">
+      <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Event Name</div>
+      <div class="flex gap-2 items-center">
+        <input id="eventNameInput" type="text" maxlength="60"
+          placeholder="e.g. xBU BB2 Talent Accelerator 2026"
+          class="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold
+                 focus:outline-none focus:border-[#1F3864] transition-colors">
+        <button onclick="saveEventName()"
+          class="shrink-0 px-5 py-2.5 bg-[#1F3864] text-white text-sm font-bold
+                 rounded-xl hover:opacity-90 active:scale-95 transition-all whitespace-nowrap">
+          Save
+        </button>
+      </div>
+      <p id="eventNameStatus" class="text-xs mt-2 min-h-[16px] text-gray-400">
+        Updates the name shown on Live Wall, Passport card, and Setup screen
+      </p>
+    </div>
+
+    <!-- ── Participant Join Link ── -->
+    <div class="bg-white rounded-2xl shadow-sm p-5">
+      <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Participant Join Link &amp; QR Code</div>
+      <div class="flex gap-5 items-start">
+
+        <!-- Input + status -->
+        <div class="flex-1">
+          <p class="text-sm text-gray-500 mb-3">
+            Paste your <strong class="text-[#1F3864]">setup.html</strong> URL below. The QR will appear on the Live Wall so participants can scan and join instantly.
+          </p>
+          <div class="flex gap-2">
+            <input id="joinUrlInput" type="url"
+              placeholder="https://your-site.netlify.app/setup.html"
+              class="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm
+                     focus:outline-none focus:border-[#1F3864] transition-colors">
+            <button onclick="saveJoinUrl()"
+              class="shrink-0 px-4 py-2.5 bg-[#1F3864] text-white text-sm font-bold
+                     rounded-xl hover:opacity-90 active:scale-95 transition-all whitespace-nowrap">
+              Save &amp; Show on Wall
+            </button>
+          </div>
+          <p id="joinUrlStatus" class="text-xs mt-2 min-h-[18px]"></p>
+          <p class="text-[11px] text-gray-300 mt-1">
+            Tip: the URL is your Netlify domain + <code class="bg-gray-100 px-1 rounded">/setup.html</code>
+          </p>
+        </div>
+
+        <!-- QR preview -->
+        <div class="shrink-0 flex flex-col items-center gap-2">
+          <div id="adminQrPreview"
+            class="w-28 h-28 rounded-xl border-2 border-gray-100 bg-gray-50
+                   flex items-center justify-center overflow-hidden">
+            <span class="text-gray-300 text-[10px] text-center px-2 leading-4">Enter URL to generate QR</span>
+          </div>
+          <span class="text-[10px] text-gray-400 font-medium">Preview</span>
+        </div>
+
+      </div>
+    </div>
 
     <!-- ── Row 1: Stats + Live Wall ── -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -418,6 +478,18 @@ function startListeners() {
     curView       = data.wordcloud_view  ?? 0;
     currentTarget = data.target_count    ?? 40;
     document.getElementById('targetInput').value = currentTarget;
+    // Populate event name
+    if (data.event_name) {
+      document.getElementById('adminEventName').textContent = data.event_name;
+      if (!document.getElementById('eventNameInput').value) {
+        document.getElementById('eventNameInput').value = data.event_name;
+      }
+    }
+    // Populate join URL input + QR preview if saved
+    if (data.join_url && !document.getElementById('joinUrlInput').value) {
+      document.getElementById('joinUrlInput').value = data.join_url;
+      renderAdminQr(data.join_url);
+    }
     updateWallUI();
     updateViewUI();
     updateStats();
@@ -442,6 +514,71 @@ document.getElementById('targetInput').addEventListener('input', () => {
     setDoc(doc(db, 'admin', 'settings'), { target_count: currentTarget }, { merge: true });
   }, 800);
 });
+
+// ── Event Name ────────────────────────────────────────────────────────────────
+
+window.saveEventName = async function() {
+  const name   = document.getElementById('eventNameInput').value.trim();
+  const status = document.getElementById('eventNameStatus');
+  if (!name) {
+    status.textContent = '⚠️ Please enter an event name';
+    status.className   = 'text-xs mt-2 text-amber-500 font-semibold';
+    return;
+  }
+  try {
+    await setDoc(doc(db, 'admin', 'settings'), { event_name: name }, { merge: true });
+    document.getElementById('adminEventName').textContent = name;
+    status.textContent = '✅ Saved — all pages will update automatically';
+    status.className   = 'text-xs mt-2 text-green-600 font-semibold';
+    setTimeout(() => {
+      status.textContent = 'Updates the name shown on Live Wall, Passport card, and Setup screen';
+      status.className   = 'text-xs mt-2 text-gray-400';
+    }, 3500);
+  } catch (e) {
+    status.textContent = `❌ Save failed: ${e.message}`;
+    status.className   = 'text-xs mt-2 text-red-500';
+  }
+};
+
+// ── Join URL + Admin QR ───────────────────────────────────────────────────────
+
+function renderAdminQr(url) {
+  const container = document.getElementById('adminQrPreview');
+  if (!url) {
+    container.innerHTML = '<span class="text-gray-300 text-[10px] text-center px-2 leading-4">Enter URL to generate QR</span>';
+    return;
+  }
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    container.innerHTML = qr.createImgTag(2, 1, 'QR');
+    const img = container.querySelector('img');
+    if (img) img.style.cssText = 'width:112px;height:112px;display:block;image-rendering:pixelated;border-radius:10px';
+  } catch (e) {
+    container.innerHTML = '<span class="text-red-400 text-[10px] text-center p-2">QR failed</span>';
+  }
+}
+
+window.saveJoinUrl = async function() {
+  const url    = document.getElementById('joinUrlInput').value.trim();
+  const status = document.getElementById('joinUrlStatus');
+  if (!url) {
+    status.textContent  = '⚠️ Please enter a URL first';
+    status.className    = 'text-xs mt-2 text-amber-500 font-semibold';
+    return;
+  }
+  try {
+    await setDoc(doc(db, 'admin', 'settings'), { join_url: url }, { merge: true });
+    status.textContent = '✅ Saved! QR is now showing on the Live Wall';
+    status.className   = 'text-xs mt-2 text-green-600 font-semibold';
+    renderAdminQr(url);
+    setTimeout(() => { status.textContent = ''; }, 4000);
+  } catch (e) {
+    status.textContent = `❌ Save failed: ${e.message}`;
+    status.className   = 'text-xs mt-2 text-red-500';
+  }
+};
 
 // ── Live Wall toggle ──────────────────────────────────────────────────────────
 
@@ -542,12 +679,8 @@ async function renderTable() {
         <td class="text-gray-400 font-mono text-xs">${i + 1}</td>
         <td class="font-semibold text-[#1A1A2E]">${escHtml(u.alias)}</td>
         <td class="text-xl">${u.hobby_emoji || '—'}</td>
-        <td class="text-xl">${u.strength_emoji || '—'}
-          ${u.strength_label ? `<span class="text-xs text-gray-400 ml-1">${escHtml(u.strength_label)}</span>` : ''}
-        </td>
-        <td class="text-xl">${u.expect_emoji || '—'}
-          ${u.expect_label ? `<span class="text-xs text-gray-400 ml-1">${escHtml(u.expect_label)}</span>` : ''}
-        </td>
+        <td class="text-xl">${u.strength_emoji || '—'}</td>
+        <td class="text-xl">${u.expect_emoji   || '—'}</td>
         <td class="font-bold text-[#4472C4]">${stampTotals[u.id] ?? '…'}</td>
         <td class="text-xs text-gray-400 whitespace-nowrap">${formatDate(u.created_at)}</td>
       </tr>
